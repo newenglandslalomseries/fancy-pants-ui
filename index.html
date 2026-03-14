@@ -44,10 +44,6 @@
             padding-left: 0.25rem; /* 4px */
         }
 
-        /* Custom Keypad active padding */
-        body.keypad-active {
-            padding-bottom: 180px;
-        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-4" ontouchstart="">
@@ -68,6 +64,7 @@
             <form id="gate-form" novalidate>
                 <!-- Station Selector -->
                 <div id="station-section" class="mb-5">
+                    <!-- Label removed as requested -->
                     <select id="station-selector" name="station" required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="" disabled selected>Select a station</option>
                         <!-- Options will be dynamically populated -->
@@ -80,21 +77,15 @@
                 <!-- Bib Number (Hidden by default) -->
                 <div id="bib-section" class="mb-5 hidden">
                     <label for="bib-number" class="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Bib Number</label>
-                    <div class="relative">
-                        <input type="text" id="bib-number" name="entry.1708578938" required
-                               inputmode="none" readonly
-                               class="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow cursor-pointer"
-                               placeholder="Tap to enter bib number">
-                        <button type="button" id="clear-bib-btn" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                    <input type="text" id="bib-number" name="entry.1708578938" required
+                           inputmode="numeric"
+                           class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Enter bib number">
                 </div>
 
                 <!-- Gates Container (Hidden by default) -->
-                <div id="gates-container" class="space-y-3 hidden">
+                <div id="gates-container" class="space-y-3 hidden"> <!-- Reduced space-y -->
+                    <!-- Gates 1-25 will be dynamically populated or hardcoded here -->
 
                     <!-- Gate 1 -->
                     <div id="gate-1" class="gate-row hidden p-2 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm">
@@ -448,7 +439,7 @@
                             </div>
                             <div class="relative">
                                 <input type="radio" id="gate-19-touch" name="entry.1176839769" value="Touch" class="sr-only peer">
-                                <label for="gate-19-touch" class="radio-label bg-gray-200 dark:bg-gray-600 peer-checked:bg-yellow-500 peer-checked:text-black dark:peer-checked:bg-yellow-400 hover:bg-gray-300 dark:hover:bg-gray-500">Touch</label>
+                                <label for="gate-19-touch" class="radio-label bg-gray-200 dark:bg-gray-600 peer-checked:bg-yellow-500 peer-checked:text-black dark:peer-checked:bg-yellow-400 hover:bg-gray-300 dark:hover:bg-gray-500">Touch</Labe>
                             </div>
                             <div class="relative">
                                 <input type="radio" id="gate-19-fifty" name="entry.1176839769" value="Fifty" class="sr-only peer">
@@ -576,20 +567,13 @@
                 <!-- Time Field (Hidden by default) -->
                 <div id="time-section" class="mb-5 hidden">
                     <label for="time-input" class="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Time (MM:SS.HH)</label>
-                    <div class="relative">
-                        <input type="text" id="time-input" name="entry.873039571"
-                               inputmode="none" readonly
-                               class="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow cursor-pointer"
-                               placeholder="Tap to enter time"
-                               pattern="^\d{1,2}:\d{2}\.\d{2}$"
-                               title="Please enter a time in MM:SS.HH format.">
-                        <button type="button" id="clear-time-btn" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Digits will fill from the right.</p>
+                    <input type="text" id="time-input" name="entry.873039571"
+                           inputmode="numeric"
+                           class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., 01:45.23"
+                           pattern="^\d{1,2}:\d{2}\.\d{2}$"
+                           title="Please enter a time in MM:SS.HH format.">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Digits will be auto-formatted.</p>
                 </div>
 
                 <!-- Status Message -->
@@ -626,22 +610,6 @@
         </div>
     </div>
 
-    <!-- Custom Numeric Keypad -->
-    <div id="custom-keypad" class="fixed bottom-0 left-0 w-full bg-gray-200 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 p-3 pb-8 z-50 transform translate-y-full transition-transform duration-200 shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
-        <div class="max-w-md mx-auto grid grid-cols-5 gap-2">
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">1</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">2</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">3</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">4</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">5</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">6</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">7</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">8</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">9</button>
-            <button type="button" class="keypad-btn bg-white dark:bg-gray-700 p-4 rounded-lg text-2xl font-semibold shadow active:bg-gray-100 dark:active:bg-gray-600">0</button>
-        </div>
-    </div>
-
 
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
@@ -665,81 +633,6 @@
             const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
             const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
 
-            // --- Custom Keypad Logic ---
-            const keypad = document.getElementById('custom-keypad');
-            let activeInput = null;
-
-            function openKeypad(inputElement) {
-                activeInput = inputElement;
-                bibInput.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500');
-                timeInput.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500');
-                activeInput.classList.add('ring-2', 'ring-blue-500', 'border-blue-500');
-
-                keypad.classList.remove('translate-y-full');
-                document.body.classList.add('keypad-active');
-
-                setTimeout(() => activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-            }
-
-            function closeKeypad() {
-                keypad.classList.add('translate-y-full');
-                document.body.classList.remove('keypad-active');
-                if (activeInput) {
-                    activeInput.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500');
-                    activeInput = null;
-                }
-            }
-
-            bibInput.addEventListener('click', (e) => { e.preventDefault(); openKeypad(bibInput); });
-            timeInput.addEventListener('click', (e) => { e.preventDefault(); openKeypad(timeInput); });
-
-            // Handle Clear (x) buttons
-            document.getElementById('clear-bib-btn').addEventListener('click', (e) => {
-                e.preventDefault();
-                bibInput.value = '';
-                bibInput.dispatchEvent(new Event('input', { bubbles: true }));
-                openKeypad(bibInput); // Re-focus
-            });
-
-            document.getElementById('clear-time-btn').addEventListener('click', (e) => {
-                e.preventDefault();
-                timeInput.value = '';
-                timeInput.dispatchEvent(new Event('input', { bubbles: true }));
-                openKeypad(timeInput); // Re-focus
-            });
-
-            document.querySelectorAll('.keypad-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!activeInput) return;
-
-                    const key = btn.dataset.key || btn.textContent.trim();
-
-                    if (activeInput.id === 'time-input') {
-                        let raw = activeInput.value.replace(/\D/g, '');
-                        if (raw.length < 6) {
-                            activeInput.value = raw + key;
-                        }
-                    } else {
-                        activeInput.value += key;
-                    }
-
-                    activeInput.dispatchEvent(new Event('input', { bubbles: true }));
-                });
-            });
-
-            document.addEventListener('click', (e) => {
-                // Close keypad if click is outside of the active input, keypad, and clear buttons
-                if (activeInput &&
-                    !activeInput.contains(e.target) &&
-                    !keypad.contains(e.target) &&
-                    !e.target.closest('button[id^="clear-"]')) {
-                    closeKeypad();
-                }
-            });
-            // --- End Custom Keypad Logic ---
-
             // This is the Google Form's actual submission URL.
             const SUBMISSION_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/formResponse';
 
@@ -753,6 +646,8 @@
              */
             async function fetchAndParseMetadata() {
                 try {
+                    // Fetch the raw JSON file from the same origin
+                    // The timestamp is to prevent browser caching.
                     const response = await fetch(`./current_race.json?timestamp=${new Date().getTime()}`);
 
                     if (!response.ok) {
@@ -761,6 +656,9 @@
 
                     const metadata = await response.json();
 
+                    // Basic validation of the fetched metadata
+                    console.log("Fetched metadata:", metadata);
+
                     if (!metadata.race_name || !metadata.stations) {
                         throw new Error("Invalid metadata format. 'race_name' or 'stations' missing.");
                     }
@@ -768,8 +666,10 @@
                     return metadata;
 
                 } catch (error) {
+                    // Check if this is the "Failed to parse URL" error specific to the canvas
                     if (error.message.includes("Failed to parse URL")) {
                         console.warn("Canvas environment detected. Using hardcoded fallback metadata.");
+                        // Return the hardcoded fallback metadata
                         return {
                             "race_name": "Test Race (Canvas)",
                             "stations": [
@@ -780,6 +680,7 @@
                         };
                     }
 
+                    // For other errors, use the retry logic
                     console.error("Error fetching or parsing metadata:", error);
                     loadingError.textContent = `Error: ${error.message}. Retrying in 5s...`;
                     return null;
@@ -790,7 +691,10 @@
              * Populates the station selector and gate map from the parsed metadata.
              */
             function buildStationUI(metadata) {
+                // Set the race title
                 raceTitle.textContent = metadata.race_name;
+
+                // Clear any existing options
                 stationSelector.innerHTML = '<option value="" disabled selected>Select a station</option>';
                 stationGateMap = {};
                 isFinishStation = {};
@@ -800,6 +704,7 @@
                 metadata.stations.forEach(station => {
                     const option = document.createElement('option');
 
+                    // Use a unique value for the selector, e.g., "Station A"
                     let stationName = station.name;
                     if (stationName === "A" || stationName === "B" || stationName === "C" || stationName === "D") {
                         stationName = `Station ${station.name}`;
@@ -808,8 +713,10 @@
                     option.textContent = stationName;
                     stationSelector.appendChild(option);
 
+                    // Store finish status
                     isFinishStation[stationName] = !!station.is_finish;
 
+                    // Build the gate map
                     if (station.max_gate) {
                         const startGate = lastMaxGate + 1;
                         const endGate = station.max_gate;
@@ -819,7 +726,7 @@
                         }
                         lastMaxGate = station.max_gate;
                     } else {
-                        stationGateMap[stationName] = [];
+                        stationGateMap[stationName] = []; // e.g., for Finish station
                     }
                 });
             }
@@ -832,8 +739,10 @@
                 const gatesToShow = stationGateMap[selectedStation] || [];
                 const isFinish = isFinishStation[selectedStation] || false;
 
+                // Sync the selected station to the hidden input for form submission
                 document.getElementById('station-hidden-input').value = selectedStation || "";
 
+                // If no station is selected, hide everything
                 if (!selectedStation) {
                     bibSection.classList.add('hidden');
                     gatesContainer.classList.add('hidden');
@@ -844,30 +753,38 @@
                     return;
                 }
 
+                // A station is selected, so lock the selector
                 stationSelector.disabled = true;
 
+                // Show Bib section
                 bibSection.classList.remove('hidden');
                 bibInput.disabled = false;
-                openKeypad(bibInput);
+                // Focus the bib input
+                bibInput.focus();
 
+                // Show/hide gates
                 if (gatesToShow.length > 0) {
                     gatesContainer.classList.remove('hidden');
+                    // Loop through all possible gates (1-25)
                     for (let i = 1; i <= 25; i++) {
                         const gateRow = document.getElementById(`gate-${i}`);
-                        if (!gateRow) continue;
+                        if (!gateRow) continue; // Skip if gate doesn't exist in HTML
 
                         const inputs = document.querySelectorAll(`input[name="${gateRow.querySelector('input[type=radio]').name}"]`);
 
                         if (gatesToShow.includes(i)) {
                             gateRow.classList.remove('hidden');
+                            // Enable radio buttons for this gate
                             inputs.forEach(input => input.disabled = false);
                         } else {
                             gateRow.classList.add('hidden');
+                            // Disable radio buttons for this gate
                             inputs.forEach(input => input.disabled = true);
                         }
                     }
                 } else {
                     gatesContainer.classList.add('hidden');
+                    // Disable all gate inputs
                     for (let i = 1; i <= 25; i++) {
                         const gateRow = document.getElementById(`gate-${i}`);
                         if (gateRow) {
@@ -877,6 +794,7 @@
                     }
                 }
 
+                // Show/hide time field
                 if (isFinish) {
                     timeSection.classList.remove('hidden');
                     timeInput.disabled = false;
@@ -897,46 +815,61 @@
                 formContent.classList.add('hidden');
 
                 let metadata = null;
-                while (!metadata) {
+                while (!metadata) { // Loop until we get metadata (either real or fallback)
                     metadata = await fetchAndParseMetadata();
                     if (!metadata) {
+                        // This means a retriable error occurred
+                        // Wait 5 seconds before retrying
                         await new Promise(resolve => setTimeout(resolve, 5000));
                     }
                 }
 
                 buildStationUI(metadata);
 
+                // Hide loading state and show form
                 loadingState.classList.add('hidden');
                 formContent.classList.remove('hidden');
 
+                // Set up event listeners
                 stationSelector.addEventListener('change', updateFormVisibility);
                 resetBtn.addEventListener('click', () => {
-                    form.reset();
-                    stationSelector.disabled = false;
-                    updateFormVisibility();
+                    form.reset(); // Full reset
+                    stationSelector.disabled = false; // Re-enable selector
+                    updateFormVisibility(); // Hide all conditional fields
                     statusMessage.classList.add('hidden');
+                    // Re-initialize the app to fetch new metadata
                     initializeApp();
                 });
             }
 
             // Auto-format the time input (Right-to-Left fill)
             timeInput.addEventListener('input', function(e) {
+                // Remove non-numeric characters
                 let inputDigits = e.target.value.replace(/\D/g, '');
 
+                // Limit to 6 digits (MMSSHH)
                 if (inputDigits.length > 6) {
                     inputDigits = inputDigits.substring(0, 6);
                 }
 
+                // If empty, clear field
                 if (inputDigits.length === 0) {
                     e.target.value = '';
                     return;
                 }
 
+                // Pad with leading zeros to ensure we always have enough for MM:SS.HH
+                // We need 6 digits to extract MM, SS, HH safely
                 const paddedDigits = inputDigits.padStart(6, '0');
+
+                // Slice parts
                 const mm = paddedDigits.substring(0, 2);
                 const ss = paddedDigits.substring(2, 4);
                 const hh = paddedDigits.substring(4, 6);
 
+                // Format: M:SS.HH or MM:SS.HH
+                // parseInt(mm, 10) removes the leading zero from minutes if present (e.g. "02" -> "2")
+                // This results in "2:30.55" instead of "02:30.55"
                 e.target.value = `${parseInt(mm, 10)}:${ss}.${hh}`;
             });
 
@@ -944,15 +877,20 @@
             form.addEventListener('submit', async function(event) {
                 event.preventDefault();
 
-                const bibNumberValue = bibInput.value.trim();
+                // --- NEW BIB NUMBER VALIDATION ---
+                const bibNumberInput = document.getElementById('bib-number');
+                const bibNumberValue = bibNumberInput.value.trim();
+
+                // Check if it's a non-empty string of digits (integer)
                 if (!/^\d+$/.test(bibNumberValue)) {
                     statusMessage.textContent = 'Error: Bib Number must be a whole number (e.g., 123).';
                     statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
                     statusMessage.classList.remove('hidden');
-                    bibInput.focus();
-                    bibInput.select();
-                    return;
+                    bibNumberInput.focus();
+                    bibNumberInput.select();
+                    return; // Stop the submission
                 }
+                // --- END NEW VALIDATION ---
 
                 if (!form.checkValidity()) {
                     form.reportValidity();
@@ -962,12 +900,17 @@
                     return;
                 }
 
-                confirmationSummary.innerHTML = '';
+                // --- Build Confirmation Summary ---
+                confirmationSummary.innerHTML = ''; // Clear previous summary
                 let summaryHtml = '';
 
+                // Add Station
                 summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Station:</strong> ${stationSelector.value}</p>`;
+
+                // Add Bib
                 summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Bib Number:</strong> ${bibInput.value}</p>`;
 
+                // Add Gates (if any are visible)
                 const gatesToShow = stationGateMap[stationSelector.value] || [];
                 if (gatesToShow.length > 0) {
                     summaryHtml += '<h4 class="font-semibold text-gray-800 dark:text-gray-100 mt-2">Gates:</h4><ul class="list-disc list-inside pl-4">';
@@ -975,7 +918,7 @@
                         const gateRow = document.getElementById(`gate-${gateNum}`);
                         if (!gateRow) return;
                         const inputs = gateRow.querySelectorAll('input[type=radio]');
-                        let selectedValue = 'Clean';
+                        let selectedValue = 'Clean'; // Default
                         for (const input of inputs) {
                             if (input.checked) {
                                 selectedValue = input.value;
@@ -991,6 +934,7 @@
                     summaryHtml += '</ul>';
                 }
 
+                // Add Time (if visible)
                 if (!timeInput.disabled) {
                     summaryHtml += `<p class="mt-2"><strong class="font-semibold text-gray-800 dark:text-gray-100">Time:</strong> ${timeInput.value}</p>`;
                 }
@@ -999,20 +943,23 @@
                 confirmationModal.classList.remove('hidden');
             });
 
+            // Handle Modal Cancel Button
             cancelSubmitBtn.addEventListener('click', () => {
                 confirmationModal.classList.add('hidden');
             });
 
+            // Handle Modal Confirm Button (Actual Submit)
             confirmSubmitBtn.addEventListener('click', async () => {
-                confirmationModal.classList.add('hidden');
+                confirmationModal.classList.add('hidden'); // Hide modal
                 statusMessage.textContent = 'Submitting...';
                 statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
                 statusMessage.classList.remove('hidden');
                 submitBtn.disabled = true;
 
                 const formData = new FormData(form);
-                const selectedStation = stationSelector.value;
+                const selectedStation = stationSelector.value; // Save station
 
+                // Convert time (MM:SS.HH) to total decimal seconds for the Google Form
                 if (isFinishStation[selectedStation] && timeInput.value) {
                     const [minutesStr, rest] = timeInput.value.split(':');
                     if (minutesStr && rest) {
@@ -1026,18 +973,22 @@
                 try {
                     const response = await fetch(SUBMISSION_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
+                        mode: 'no-cors', // Google Forms requires no-cors
                         body: formData
                     });
 
+                    // 'no-cors' mode means we can't read the response,
+                    // so we just assume success if the request didn't throw.
                     statusMessage.textContent = 'Success! Entry recorded.';
                     statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
 
+                    // Reset the form, but keep the station
                     form.reset();
-                    stationSelector.value = selectedStation;
-                    updateFormVisibility();
+                    stationSelector.value = selectedStation; // Restore station
+                    updateFormVisibility(); // Re-apply visibility rules
 
-                    openKeypad(bibInput);
+                    // Focus on Bib Number for next entry
+                    bibInput.focus();
 
                 } catch (error) {
                     console.error('Error submitting form:', error);
@@ -1046,12 +997,14 @@
                 } finally {
                     statusMessage.classList.remove('hidden');
                     submitBtn.disabled = false;
+                    // Hide success/error message after 3 seconds
                     setTimeout(() => {
                         statusMessage.classList.add('hidden');
                     }, 3000);
                 }
             });
 
+            // Start the application
             initializeApp();
         });
     </script>
