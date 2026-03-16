@@ -399,8 +399,8 @@
             const selectedClass = document.getElementById('classSelect').value;
 
             select.innerHTML = selectedClass
-                ? `<option value="">-- View ${selectedClass} Distributions --</option>`
-                : '<option value="">-- View Overall Distributions --</option>';
+                ? `<option value="">-- All ${selectedClass} --</option>`
+                : '<option value="">-- All --</option>';
 
             const uniqueBibs = new Map();
             rows.forEach(row => {
