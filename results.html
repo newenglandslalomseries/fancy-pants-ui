@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bib Number Lookup</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plugin for drawing vertical lines (annotations) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         .loading-spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -24,6 +27,16 @@
         .data-card:hover {
             transform: translateY(-2px);
         }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans text-gray-900">
@@ -32,51 +45,127 @@
         <!-- Header -->
         <header class="text-center mb-10">
             <h1 class="text-3xl font-extrabold text-blue-800 mb-2">Race Results Lookup</h1>
-            <p class="text-gray-600">Enter your bib number to see your stats.</p>
         </header>
 
-        <!-- Search Section -->
-        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
-            <div class="flex flex-col md:flex-row gap-4">
-                <div class="flex-grow">
-                    <label for="bibInput" class="block text-sm font-medium text-gray-700 mb-1">Bib Number</label>
-                    <input
-                        type="text"
-                        id="bibInput"
-                        placeholder="e.g. 101"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+        <!-- Race Selector Box (Global Control) -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-4 border-l-4 border-blue-600">
+            <div class="flex flex-col md:flex-row items-end gap-4 w-full">
+                <!-- Race Selector -->
+                <div class="flex-grow w-full">
+                    <label for="raceSelect" class="block text-sm font-medium text-gray-700 mb-1 uppercase tracking-wider">Active Race</label>
+                    <select
+                        id="raceSelect"
+                        onchange="handleRaceChange()"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white font-semibold text-blue-900"
                     >
+                        <option value="">Loading races...</option>
+                    </select>
                 </div>
-                <div class="flex items-end">
-                    <button
-                        onclick="fetchData()"
-                        id="searchBtn"
-                        class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg active:transform active:scale-95"
+
+                <!-- Refresh Button -->
+                <button
+                    onclick="refreshData()"
+                    id="refreshBtn"
+                    title="Refresh data from sheet"
+                    class="w-full md:w-auto bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 border border-blue-200 active:transform active:scale-95"
+                >
+                    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                    <span>Refresh</span>
+                </button>
+            </div>
+            <div id="statusMessage" class="mt-3 text-sm hidden font-medium"></div>
+        </div>
+
+        <!-- Filter & Search Box -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Class Selector -->
+                <div class="w-full">
+                    <label for="classSelect" class="block text-sm font-medium text-gray-700 mb-1">Filter by Class</label>
+                    <select
+                        id="classSelect"
+                        onchange="handleClassChange()"
+                        disabled
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
-                        Search Results
-                    </button>
+                        <option value="">All Classes</option>
+                    </select>
+                </div>
+
+                <!-- Racer Selector -->
+                <div class="w-full">
+                    <label for="bibSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Racer</label>
+                    <select
+                        id="bibSelect"
+                        onchange="handleSelectionChange()"
+                        disabled
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                        <option value="">Loading racers...</option>
+                    </select>
                 </div>
             </div>
-            <div id="statusMessage" class="mt-4 text-sm hidden"></div>
         </div>
 
-        <!-- Results Section -->
+        <!-- Loading State -->
         <div id="loading" class="hidden flex flex-col items-center justify-center py-12">
             <div class="loading-spinner mb-4"></div>
-            <p class="text-gray-500 animate-pulse">Fetching results from Published CSV...</p>
+            <p id="loadingText" class="text-gray-500 animate-pulse">Processing data...</p>
         </div>
 
-        <div id="resultsContainer" class="space-y-6">
+        <!-- Dashboard Section (Always Visible) -->
+        <div id="statsDashboard" class="space-y-4 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                <div class="flex flex-col gap-4 mb-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <h3 class="text-lg font-bold text-gray-800" id="distributionTitle">Overall Distribution Overview</h3>
+
+                        <!-- Control Checkboxes (Group) -->
+                        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="showTime" checked onchange="updateCharts()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <span class="text-blue-600">Distribution: Raw Time</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="showScore" checked onchange="updateCharts()" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                                <span class="text-emerald-600">Distribution: Total Score</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Individual Marker Checkboxes -->
+                    <div id="individualMarkerControls" class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold border-t border-gray-100 pt-3 hidden">
+                        <span class="text-gray-400 uppercase tracking-wider">Racer Markers:</span>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="showRacerTime" checked onchange="updateCharts()" class="w-4 h-4 text-blue-900 rounded border-gray-300 focus:ring-blue-900">
+                            <span class="text-blue-900">Show Racer Time</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="showRacerScore" checked onchange="updateCharts()" class="w-4 h-4 text-emerald-900 rounded border-gray-300 focus:ring-emerald-500">
+                            <span class="text-emerald-900">Show Racer Score</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="h-80 w-full">
+                    <canvas id="statsChart"></canvas>
+                </div>
+                <p class="text-xs text-gray-400 mt-4 text-center italic">Values are binned into 5-unit intervals (seconds for time, points for score).</p>
+            </div>
+        </div>
+
+        <!-- Results Section (Visible when runner selected) -->
+        <div id="resultsContainer" class="space-y-6 hidden">
             <!-- Cards will be injected here -->
         </div>
 
-        <!-- No Results / Initial State -->
-        <div id="emptyState" class="text-center py-20 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-20 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No results to show</h3>
-            <p class="mt-1 text-sm text-gray-500">Enter a bib number above to begin.</p>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No data available</h3>
+            <p class="mt-1 text-sm text-gray-500">The spreadsheet appears to be empty or misformatted.</p>
         </div>
     </div>
 
@@ -86,40 +175,80 @@
     </footer>
 
     <script>
-        // Default Configuration (Published CSV)
-        const DEFAULT_PUB_ID = '2PACX-1vS9t6men_kO_DcrE3ZxilkM9JNSpQfw9TrixtJqjRkARdEaoXtc5lhU2xBwp6Xj_KHj-8V37R7e4UBj';
-        const DEFAULT_GID = '1657054501';
-        // Updated header constant
-        const BIB_COLUMN_NAME = 'Bib #';
-
-        // State variables
-        let pubId = DEFAULT_PUB_ID;
-        let gid = DEFAULT_GID;
-
-        // Initialize from URL params
-        function init() {
-            const params = new URLSearchParams(window.location.search);
-
-            const rawId = params.get('id') || params.get('pub');
-            if (rawId) {
-                const idMatch = rawId.match(/\/e\/([a-zA-Z0-9-_]+)/);
-                pubId = idMatch ? idMatch[1] : rawId;
-            }
-
-            gid = params.get('gid') || DEFAULT_GID;
-
-            document.getElementById('sourceInfo').innerText = `Published ID: ${pubId} | GID: ${gid}`;
-
-            document.getElementById('bibInput').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') {
-                    fetchData();
+        // Fallback Configuration
+        const FALLBACK_RACES = {
+            "races": [
+                {
+                    "name": "Farmington Slalom 2025",
+                    "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
                 }
-            });
+            ]
+        };
+
+        const COL_BIB = 'Bib #';
+        const COL_NAME = 'Name';
+        const COL_CLASS = 'Class';
+        const COL_TIME = 'Raw Time';
+        const COL_SCORE = 'Total Score';
+
+        const BUCKET_SIZE = 5;
+
+        // State
+        let currentRaces = [];
+        let sheetId = '';
+        let gid = '';
+        let allData = [];
+        let statsChart = null;
+
+        async function init() {
+            await loadRaces();
         }
 
-        /**
-         * CSV Parser adjusted for Row 2 Headers and Row 3 Data
-         */
+        async function loadRaces() {
+            const raceSelect = document.getElementById('raceSelect');
+            try {
+                const response = await fetch('races.json');
+                if (!response.ok) throw new Error('File not found');
+                const data = await response.json();
+                currentRaces = data.races;
+            } catch (e) {
+                console.log("Using fallback races JSON");
+                currentRaces = FALLBACK_RACES.races;
+            }
+
+            raceSelect.innerHTML = '';
+            currentRaces.forEach((race, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = race.name;
+                raceSelect.appendChild(option);
+            });
+
+            if (currentRaces.length > 0) {
+                handleRaceChange();
+            }
+        }
+
+        function handleRaceChange() {
+            const raceIndex = document.getElementById('raceSelect').value;
+            const race = currentRaces[raceIndex];
+            if (!race) return;
+
+            const idMatch = race.url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            sheetId = idMatch ? idMatch[1] : '';
+
+            const gidMatch = race.url.match(/gid=([0-9]+)/);
+            gid = gidMatch ? gidMatch[1] : '0';
+
+            document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: ${gid}`;
+
+            document.getElementById('bibSelect').value = "";
+            document.getElementById('classSelect').value = "";
+            allData = [];
+
+            preloadData();
+        }
+
         function parseCSV(text) {
             const lines = text.split(/\r?\n/);
             if (lines.length < 2) return { headers: [], rows: [] };
@@ -160,76 +289,351 @@
             return { headers, rows: results };
         }
 
-        async function fetchData() {
-            const bibValue = document.getElementById('bibInput').value.trim();
-            if (!bibValue) {
-                showMessage('Please enter a bib number.', 'text-red-500');
-                return;
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            const currentClass = document.getElementById('classSelect').value;
+            const currentSelection = document.getElementById('bibSelect').value;
+
+            btn.disabled = true;
+            icon.classList.add('refresh-spin');
+
+            await preloadData();
+
+            if (currentClass) {
+                document.getElementById('classSelect').value = currentClass;
+                handleClassChange();
             }
 
-            const resultsContainer = document.getElementById('resultsContainer');
+            if (currentSelection) {
+                const select = document.getElementById('bibSelect');
+                select.value = currentSelection;
+                handleSelectionChange();
+            }
+
+            icon.classList.remove('refresh-spin');
+            btn.disabled = false;
+        }
+
+        async function preloadData() {
+            const bibSelect = document.getElementById('bibSelect');
+            const classSelect = document.getElementById('classSelect');
             const loading = document.getElementById('loading');
             const emptyState = document.getElementById('emptyState');
-            const statusMessage = document.getElementById('statusMessage');
+            const resultsContainer = document.getElementById('resultsContainer');
 
-            resultsContainer.innerHTML = '';
+            bibSelect.disabled = true;
+            classSelect.disabled = true;
             loading.classList.remove('hidden');
             emptyState.classList.add('hidden');
-            statusMessage.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
 
             try {
-                const url = `https://docs.google.com/spreadsheets/d/e/${pubId}/pub?gid=${gid}&single=true&output=csv`;
-
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&t=${new Date().getTime()}`;
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('Failed to fetch CSV. Check if the ID and GID are correct.');
+                if (!response.ok) throw new Error('Failed to fetch spreadsheet.');
 
                 const csvText = await response.text();
                 const { headers, rows } = parseCSV(csvText);
 
-                if (!headers.includes(BIB_COLUMN_NAME)) {
-                    throw new Error(`Column "${BIB_COLUMN_NAME}" not found on row 2. Found headers: ${headers.filter(h => h).join(', ')}`);
+                if (!headers.includes(COL_BIB)) {
+                    throw new Error(`Critical column "${COL_BIB}" not found.`);
                 }
 
-                const filteredResults = rows.filter(row => {
-                    const val = row[BIB_COLUMN_NAME];
-                    return val != null && val.toString().trim() === bibValue;
-                });
+                allData = rows;
+                populateClassSelect(rows);
+                classSelect.disabled = false;
+                populateRunnerSelect(rows);
+                bibSelect.disabled = false;
 
-                if (filteredResults.length === 0) {
-                    showMessage(`No records found for bib #${bibValue}.`, 'text-orange-500');
-                    emptyState.classList.remove('hidden');
-                } else {
-                    renderResults(filteredResults);
-                }
+                updateCharts();
 
             } catch (error) {
                 console.error(error);
-                showMessage(error.message || 'Error fetching data.', 'text-red-500');
+                showMessage(error.message, 'text-red-500');
+                allData = [];
                 emptyState.classList.remove('hidden');
             } finally {
                 loading.classList.add('hidden');
             }
         }
 
+        function populateClassSelect(rows) {
+            const classSelect = document.getElementById('classSelect');
+            const classes = [...new Set(rows.map(r => r[COL_CLASS]).filter(Boolean))].sort();
+
+            classSelect.innerHTML = '<option value="">All Classes</option>';
+            classes.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls;
+                option.textContent = cls;
+                classSelect.appendChild(option);
+            });
+        }
+
+        function handleClassChange() {
+            const selectedClass = document.getElementById('classSelect').value;
+            const bibSelect = document.getElementById('bibSelect');
+
+            const filteredRows = selectedClass
+                ? allData.filter(r => r[COL_CLASS] === selectedClass)
+                : allData;
+
+            populateRunnerSelect(filteredRows);
+
+            const stillExists = filteredRows.some(r => r[COL_BIB] === bibSelect.value);
+            if (!stillExists && bibSelect.value) {
+                bibSelect.value = "";
+            }
+
+            handleSelectionChange();
+
+            document.getElementById('distributionTitle').textContent = selectedClass
+                ? `Distribution: ${selectedClass}`
+                : 'Overall Distribution Overview';
+        }
+
+        function populateRunnerSelect(rows) {
+            const select = document.getElementById('bibSelect');
+            const previousValue = select.value;
+            const selectedClass = document.getElementById('classSelect').value;
+
+            select.innerHTML = selectedClass
+                ? `<option value="">-- View ${selectedClass} Distributions --</option>`
+                : '<option value="">-- View Overall Distributions --</option>';
+
+            const uniqueBibs = new Map();
+            rows.forEach(row => {
+                const bib = row[COL_BIB];
+                if (!bib || uniqueBibs.has(bib)) return;
+
+                const fullName = row[COL_NAME] || 'Unknown';
+                const runnerClass = row[COL_CLASS] || 'N/A';
+                const label = `${bib} - ${fullName} - ${runnerClass}`;
+
+                const option = document.createElement('option');
+                option.value = bib;
+                option.textContent = label;
+                select.appendChild(option);
+                uniqueBibs.set(bib, true);
+            });
+
+            if (previousValue) select.value = previousValue;
+        }
+
+        function handleSelectionChange() {
+            const bibValue = document.getElementById('bibSelect').value;
+            const resultsContainer = document.getElementById('resultsContainer');
+            const markerControls = document.getElementById('individualMarkerControls');
+
+            if (!bibValue) {
+                resultsContainer.classList.add('hidden');
+                markerControls.classList.add('hidden');
+                updateCharts();
+                return;
+            }
+
+            markerControls.classList.remove('hidden');
+            resultsContainer.classList.remove('hidden');
+            resultsContainer.innerHTML = '';
+
+            const filteredResults = allData.filter(row => {
+                const val = row[COL_BIB];
+                return val != null && val.toString().trim() === bibValue;
+            });
+
+            if (filteredResults.length === 0) {
+                resultsContainer.innerHTML = '<div class="text-center p-10 bg-white rounded-xl shadow italic text-gray-400">No results found for this selection.</div>';
+            } else {
+                renderResults(filteredResults);
+            }
+
+            updateCharts();
+        }
+
+        function parseToNumeric(val) {
+            if (!val) return null;
+            if (typeof val === 'number') return val;
+            if (val.includes(':')) {
+                const parts = val.split(':').map(Number);
+                if (parts.length === 2) return (parts[0] * 60) + parts[1];
+                if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+            }
+            const num = parseFloat(val);
+            return isNaN(num) ? null : num;
+        }
+
+        function updateCharts() {
+            if (!allData || allData.length === 0) return;
+
+            const selectedClass = document.getElementById('classSelect').value;
+            const bibValue = document.getElementById('bibSelect').value;
+            const showTime = document.getElementById('showTime').checked;
+            const showScore = document.getElementById('showScore').checked;
+            const showRacerTime = document.getElementById('showRacerTime').checked;
+            const showRacerScore = document.getElementById('showRacerScore').checked;
+
+            const dataToChart = selectedClass
+                ? allData.filter(r => r[COL_CLASS] === selectedClass)
+                : allData;
+
+            const timeValues = dataToChart.map(r => parseToNumeric(r[COL_TIME])).filter(v => v !== null);
+            const scoreValues = dataToChart.map(r => parseToNumeric(r[COL_SCORE])).filter(v => v !== null);
+
+            const allValues = [...timeValues, ...scoreValues];
+            if (allValues.length === 0) {
+                if (statsChart) statsChart.destroy();
+                return;
+            }
+
+            // Calculate min and max based on data
+            const actualMin = Math.min(...allValues);
+            const actualMax = Math.max(...allValues);
+
+            const minVal = Math.floor(actualMin / BUCKET_SIZE) * BUCKET_SIZE;
+            const maxVal = Math.ceil(actualMax / BUCKET_SIZE) * BUCKET_SIZE;
+
+            const labels = [];
+            const timeCounts = [];
+            const scoreCounts = [];
+
+            for (let i = minVal; i <= maxVal; i += BUCKET_SIZE) {
+                labels.push(`${i}-${i + BUCKET_SIZE}`);
+                const tCount = timeValues.filter(v => v >= i && v < i + BUCKET_SIZE).length;
+                const sCount = scoreValues.filter(v => v >= i && v < i + BUCKET_SIZE).length;
+                timeCounts.push(tCount);
+                scoreCounts.push(sCount);
+            }
+
+            // Annotation calculations for selected bib
+            const annotations = {};
+            if (bibValue) {
+                const bibData = allData.filter(row => row[COL_BIB] && row[COL_BIB].toString().trim() === bibValue);
+
+                bibData.forEach((run, idx) => {
+                    const runTime = parseToNumeric(run[COL_TIME]);
+                    const runScore = parseToNumeric(run[COL_SCORE]);
+
+                    if (runTime !== null && showRacerTime) {
+                        // Position annotation relative to dynamic minVal
+                        const runTimePos = (runTime - minVal) / BUCKET_SIZE;
+                        annotations[`timeLine_${idx}`] = {
+                            type: 'line',
+                            xMin: runTimePos,
+                            xMax: runTimePos,
+                            borderColor: 'rgba(30, 58, 138, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            label: {
+                                display: false
+                            }
+                        };
+                    }
+
+                    if (runScore !== null && showRacerScore) {
+                        // Position annotation relative to dynamic minVal
+                        const runScorePos = (runScore - minVal) / BUCKET_SIZE;
+                        annotations[`scoreLine_${idx}`] = {
+                            type: 'line',
+                            xMin: runScorePos,
+                            xMax: runScorePos,
+                            borderColor: 'rgba(6, 78, 59, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [6, 2],
+                            label: {
+                                display: false
+                            }
+                        };
+                    }
+                });
+            }
+
+            const canvas = document.getElementById('statsChart');
+            const ctx = canvas.getContext('2d');
+
+            if (statsChart) statsChart.destroy();
+
+            const datasets = [];
+            if (showTime) {
+                datasets.push({
+                    label: `Raw Time (${selectedClass || 'Overall'})`,
+                    data: timeCounts,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgb(59, 130, 246)'
+                });
+            }
+            if (showScore) {
+                datasets.push({
+                    label: `Total Score (${selectedClass || 'Overall'})`,
+                    data: scoreCounts,
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgb(16, 185, 129)'
+                });
+            }
+
+            statsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        annotation: {
+                            annotations: annotations
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Runner Count' },
+                            ticks: { precision: 0 }
+                        },
+                        x: {
+                            title: { display: true, text: 'Range (Seconds or Points)' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
         function renderResults(results) {
             const container = document.getElementById('resultsContainer');
-
             results.forEach((row, index) => {
                 const card = document.createElement('div');
                 card.className = "bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 data-card";
 
                 let contentHtml = `
                     <div class="bg-blue-600 px-6 py-3 flex justify-between items-center">
-                        <h3 class="text-white font-bold text-lg">Entry #${index + 1}</h3>
-                        <span class="bg-white text-blue-600 text-xs font-bold px-2 py-1 rounded">Bib ${row[BIB_COLUMN_NAME]}</span>
+                        <h3 class="text-white font-bold text-lg">Record #${index + 1}</h3>
+                        <span class="bg-white text-blue-600 text-xs font-bold px-2 py-1 rounded">Bib ${row[COL_BIB]}</span>
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 `;
 
                 Object.entries(row).forEach(([key, value]) => {
-                    if (key === BIB_COLUMN_NAME) return;
                     if (!key) return;
-
                     contentHtml += `
                         <div class="border-b border-gray-50 pb-2">
                             <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">${key}</span>
@@ -247,7 +651,7 @@
         function showMessage(text, colorClass) {
             const statusMessage = document.getElementById('statusMessage');
             statusMessage.innerText = text;
-            statusMessage.className = `mt-4 text-sm font-medium ${colorClass}`;
+            statusMessage.className = `mt-3 text-sm font-medium ${colorClass}`;
             statusMessage.classList.remove('hidden');
         }
 
