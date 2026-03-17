@@ -39,6 +39,21 @@
             background: #cbd5e1;
             border-radius: 10px;
         }
+
+        /* Scroll shadow indicators: show shadows at the edges when content is overflowing and not at the end */
+        .scroll-shadow-container {
+            background:
+                /* Shadow covers */
+                linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
+                linear-gradient(to right, rgba(255, 255, 255, 0), white 70%) 100% 0,
+                /* Shadows */
+                radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .12), rgba(0, 0, 0, 0)),
+                radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .12), rgba(0, 0, 0, 0)) 100% 0;
+            background-repeat: no-repeat;
+            background-color: white;
+            background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+            background-attachment: local, local, scroll, scroll;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans text-gray-900">
@@ -475,9 +490,6 @@
             updateDisplay();
         }
 
-        /**
-         * Clears the class filter
-         */
         function clearClassFilter() {
             const select = document.getElementById('classSelect');
             if (select.value !== "") {
@@ -486,9 +498,6 @@
             }
         }
 
-        /**
-         * Clears the racer filter
-         */
         function clearRacerFilter() {
             const select = document.getElementById('bibSelect');
             if (select.value !== "") {
@@ -653,8 +662,11 @@
             const colCount = 3 + dynamicKeys.length;
 
             let tableHtml = `
-                <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-                    <div class="overflow-x-auto">
+                <div class="md:hidden text-center mb-1 animate-pulse">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">← Scroll table for more →</span>
+                </div>
+                <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden relative">
+                    <div class="overflow-x-auto scroll-shadow-container">
                         <table class="w-full text-sm text-left">
                             <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider">
                                 <tr>
@@ -684,7 +696,7 @@
                     tableHtml += `
                         <tr class="hover:bg-blue-50 transition-colors">
                             <td class="px-3 py-2 font-bold text-gray-900">${bib}</td>
-                            <td class="px-3 py-2 text-gray-700 font-semibold truncate max-w-[120px]">${name}</td>
+                            <td class="px-3 py-2 text-gray-700 font-semibold truncate max-w-[120px] whitespace-nowrap">${name}</td>
                             <td class="px-3 py-2 font-bold text-blue-600">#${runNum}</td>
                             ${dynamicKeys.map(key => {
                                 let val = row[key] || '—';
