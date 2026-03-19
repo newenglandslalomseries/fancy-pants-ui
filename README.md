@@ -104,7 +104,7 @@ so `entry.1989426203` is the entry ID for the Gate #50 question.
 
 The results viewer app is https://bjaspan.github.io/fancy-pants-ui/results.html.
 
-## Editing races to the viewer
+## Adding races to the viewer
 
 The `races.json` file configures the viewer:
 
