@@ -305,7 +305,7 @@
 
         function parseCSV(text) {
             const lines = text.split(/\r?\n/);
-            if (lines.length < 2) return { headers: [], rows: [] };
+            if (lines.length < 1) return { headers: [], rows: [] };
 
             const splitRow = (row) => {
                 const result = [];
@@ -326,10 +326,20 @@
                 return result.map(v => v.replace(/^"|"$/g, ''));
             };
 
-            const headers = splitRow(lines[1]);
+            // Detect if headers are in row 1 or 2 by looking for "Bib #"
+            let headerIdx = 1; // Default to row 2
+            if (lines[0]) {
+                const firstRowCols = splitRow(lines[0]);
+                if (firstRowCols.includes(COL_BIB)) {
+                    headerIdx = 0;
+                }
+            }
+
+            const headers = splitRow(lines[headerIdx]);
             const results = [];
 
-            for (let i = 2; i < lines.length; i++) {
+            // Start data processing from the row immediately after headers
+            for (let i = headerIdx + 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 const values = splitRow(lines[i]);
                 const obj = {};
