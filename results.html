@@ -305,7 +305,7 @@
 
         function parseCSV(text) {
             const lines = text.split(/\r?\n/);
-            if (lines.length < 2) return { headers: [], rows: [] };
+            if (lines.length < 1) return { headers: [], rows: [] };
 
             const splitRow = (row) => {
                 const result = [];
@@ -326,10 +326,20 @@
                 return result.map(v => v.replace(/^"|"$/g, ''));
             };
 
-            const headers = splitRow(lines[1]);
+            // Detect if headers are in row 1 or 2 by looking for "Bib #"
+            let headerIdx = 1; // Default to row 2
+            if (lines[0]) {
+                const firstRowCols = splitRow(lines[0]);
+                if (firstRowCols.includes(COL_BIB)) {
+                    headerIdx = 0;
+                }
+            }
+
+            const headers = splitRow(lines[headerIdx]);
             const results = [];
 
-            for (let i = 2; i < lines.length; i++) {
+            // Start data processing from the row immediately after headers
+            for (let i = headerIdx + 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 const values = splitRow(lines[i]);
                 const obj = {};
@@ -373,11 +383,13 @@
             const classSelect = document.getElementById('classSelect');
             const loading = document.getElementById('loading');
             const emptyState = document.getElementById('emptyState');
+            const statusMessage = document.getElementById('statusMessage');
 
             bibSelect.disabled = true;
             classSelect.disabled = true;
             loading.classList.remove('hidden');
             emptyState.classList.add('hidden');
+            statusMessage.classList.add('hidden'); // Clear previous error messages
 
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&t=${new Date().getTime()}`;
@@ -408,6 +420,8 @@
                 showMessage(error.message, 'text-red-500');
                 allData = [];
                 emptyState.classList.remove('hidden');
+                // Hide table/results on failure
+                document.getElementById('resultsContainer').innerHTML = '';
             } finally {
                 loading.classList.add('hidden');
             }
