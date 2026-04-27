@@ -6,6 +6,6 @@
     { "name": "Station B", "max_gate": 12 },
     { "name": "Station C", "max_gate": 17 },
     { "name": "Station D", "max_gate": 25 },
-    { "name": "Finish", "is_finish": true, "max_gate": 30 }
+    { "name": "Finish", "is_finish": true }
   ]
 }
