@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paddling Race Session Optimizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 p-6">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <header class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Race Session Optimizer</h1>
+            <p class="text-gray-600">Paste your CSV registration data below. The tool will minimize the number of racers participating in both Session A and Session B, while keeping the total number of boats balanced.</p>
+            <p class="text-sm text-gray-500 mt-2">Required columns: <code class="bg-gray-100 px-1 py-0.5 rounded">Name</code>, <code class="bg-gray-100 px-1 py-0.5 rounded">Race Classes</code>, and <code class="bg-gray-100 px-1 py-0.5 rounded">Tandem Boat Partner(s)</code>.</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <textarea id="csvInput" rows="10" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y" placeholder="Name,Race Classes,Tandem Boat Partner(s)
+Alice,Solo 1 & Tandem 2 & Solo 3,Bob
+Bob,Tandem 2,
+Charlie,Solo 1 & Solo 3,
+..."></textarea>
+
+            <div class="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
+                    <label for="maxDiff" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Max Boat Difference:</label>
+                    <input type="number" id="maxDiff" value="5" min="0" class="w-20 p-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm text-center">
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div id="status" class="text-sm font-medium text-gray-500"></div>
+                    <button onclick="processData()" class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        Optimize Sessions
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="hidden space-y-6">
+            <!-- Summary Metric -->
+            <div class="bg-blue-50 border border-blue-100 p-6 rounded-xl text-center relative">
+                <h2 class="text-lg font-semibold text-blue-900">Optimization Result</h2>
+                <div class="mt-2 text-4xl font-bold text-blue-600" id="overlapCount">0</div>
+                <div class="text-blue-800 mt-1 font-medium">Racers in Both Sessions</div>
+                <div id="constraintWarning" class="hidden mt-3 inline-block bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full font-medium border border-yellow-200">
+                    Warning: Impossible to meet boat difference constraint. Showing closest possible balance.
+                </div>
+            </div>
+
+            <!-- Overlapping Racers List -->
+            <div id="overlapRacersContainer" class="hidden bg-white p-6 rounded-xl shadow-sm border border-red-100">
+                <h3 class="text-lg font-semibold text-red-800 mb-3 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Affected Racers (Both Sessions)
+                </h3>
+                <ul id="overlapRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
+            </div>
+
+            <!-- Exclusive Racers List -->
+            <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
+                    <h3 class="text-lg font-semibold text-emerald-800 mb-3">Racers Only in Session A</h3>
+                    <ul id="onlyARacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-purple-100">
+                    <h3 class="text-lg font-semibold text-purple-800 mb-3">Racers Only in Session B</h3>
+                    <ul id="onlyBRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
+                </div>
+            </div>
+
+            <!-- Sessions Breakdown (Spreadsheet Friendly) -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold">Sessions Breakdown</h3>
+                    <div class="text-sm text-gray-300">Select and copy the table below to paste into a spreadsheet.</div>
+                </div>
+                <div class="p-0 overflow-x-auto">
+                    <div id="spreadsheetTableContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Basic CSV Parser ---
+        function parseCSV(text) {
+            let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
+            for (l of text) {
+                if ('"' === l) {
+                    if (s && l === p) row[i] += l;
+                    s = !s;
+                } else if (',' === l && s) l = row[++i] = '';
+                else if ('\n' === l && s) {
+                    if ('\r' === p) row[i] = row[i].slice(0, -1);
+                    row = ret[++r] = [l = '']; i = 0;
+                } else row[i] += l;
+                p = l;
+            }
+            return ret;
+        }
+
+        // --- 2. Simulated Annealing for Constrained Optimization ---
+        // Fast meta-heuristic to find a balance between minimum overlap and boat limits.
+        function runSimulatedAnnealing(N_CLASSES, racerClassArray, classBoatArray, maxDiff, timeLimitMs = 500) {
+            function evaluate(state) {
+                let boatsA = 0, boatsB = 0;
+                for(let i=0; i<N_CLASSES; i++) {
+                    if(state[i]) boatsA += classBoatArray[i];
+                    else boatsB += classBoatArray[i];
+                }
+                let diff = Math.abs(boatsA - boatsB);
+
+                let overlap = 0;
+                for(let i=0; i<racerClassArray.length; i++) {
+                    let hasA = false, hasB = false;
+                    for(let j=0; j<racerClassArray[i].length; j++) {
+                        if(state[racerClassArray[i][j]]) hasA = true;
+                        else hasB = true;
+                    }
+                    if(hasA && hasB) overlap++;
+                }
+
+                let valid = diff <= maxDiff;
+                // Base cost is overlap. Difference breaks ties.
+                let cost = overlap * 10000 + diff;
+
+                // Heavy penalty for invalid states (violating boat diff constraint)
+                if(!valid) {
+                    cost += 10000000 + diff * 100000;
+                }
+                return { cost, overlap, diff, boatsA, boatsB, valid };
+            }
+
+            let bestGlobalState = null;
+            let bestGlobalEval = { cost: Infinity };
+            let startTime = performance.now();
+
+            // Run until time budget expires to guarantee responsive UI with max search space exploration
+            while (performance.now() - startTime < timeLimitMs) {
+                // Random initial state
+                let state = Array.from({length: N_CLASSES}, () => Math.random() > 0.5);
+                let currentEval = evaluate(state);
+
+                let temp = 100.0;
+                const minTemp = 0.001;
+                const alpha = 0.95; // Fast cooling to allow many restarts
+
+                while(temp > minTemp && performance.now() - startTime < timeLimitMs) {
+                    // Batch inner iterations to avoid constant time-checking overhead
+                    for(let i=0; i<500; i++) {
+                        let flip1 = Math.floor(Math.random() * N_CLASSES);
+                        let flip2 = -1;
+
+                        // 50% chance to swap two elements instead of flipping one
+                        if (Math.random() < 0.5 && N_CLASSES > 1) {
+                            flip2 = Math.floor(Math.random() * N_CLASSES);
+                            let attempts = 0;
+                            while(state[flip1] === state[flip2] && attempts < 5) {
+                                flip2 = Math.floor(Math.random() * N_CLASSES);
+                                attempts++;
+                            }
+                            if(state[flip1] === state[flip2]) flip2 = -1; // Fallback to 1 flip if can't find opposites easily
+                        }
+
+                        // Apply neighbor transition
+                        state[flip1] = !state[flip1];
+                        if (flip2 !== -1) state[flip2] = !state[flip2];
+
+                        let nextEval = evaluate(state);
+
+                        // Acceptance logic (allow worse states probabilistically based on temperature)
+                        if (nextEval.cost < currentEval.cost || Math.exp((currentEval.cost - nextEval.cost) / temp) > Math.random()) {
+                            currentEval = nextEval;
+                            if (currentEval.cost < bestGlobalEval.cost) {
+                                bestGlobalEval = currentEval;
+                                bestGlobalState = [...state];
+                            }
+                        } else {
+                            // Revert transition
+                            state[flip1] = !state[flip1];
+                            if (flip2 !== -1) state[flip2] = !state[flip2];
+                        }
+                    }
+                    temp *= alpha;
+                }
+            }
+            return { state: bestGlobalState || Array(N_CLASSES).fill(true), eval: bestGlobalEval };
+        }
+
+        // --- 3. Main Processing Logic ---
+        function processData() {
+            const statusEl = document.getElementById('status');
+            const csvText = document.getElementById('csvInput').value.trim();
+            const maxDiffInput = parseInt(document.getElementById('maxDiff').value, 10);
+            const maxDiff = isNaN(maxDiffInput) ? 5 : Math.max(0, maxDiffInput);
+
+            if (!csvText) {
+                alert("Please paste CSV data first.");
+                return;
+            }
+
+            statusEl.textContent = "Processing...";
+
+            setTimeout(() => {
+                try {
+                    let lines = parseCSV(csvText);
+                    if (lines.length < 2) throw new Error("CSV has no data rows.");
+
+                    let header = lines[0].map(h => (h || '').toLowerCase().trim());
+                    let nameIdx = header.findIndex(h => h.includes('name'));
+                    let classesIdx = header.findIndex(h => h.includes('class'));
+                    let partnersIdx = header.findIndex(h => h.includes('tandem') || h.includes('partner'));
+
+                    if (nameIdx === -1 || classesIdx === -1 || partnersIdx === -1) {
+                        throw new Error("Could not find required columns: 'Name', 'Race Classes', 'Tandem Boat Partner(s)'.");
+                    }
+
+                    let racerMap = new Map(); // normName -> Set(classes)
+                    let originalNames = new Map(); // normName -> Display Name
+                    let classesSet = new Set();
+                    let parsedRows = [];
+
+                    // Pass 1: Parse Data & build base maps
+                    for (let i = 1; i < lines.length; i++) {
+                        let row = lines[i];
+                        if (!row || row.length <= Math.max(nameIdx, classesIdx, partnersIdx)) continue;
+
+                        let name = (row[nameIdx] || "").trim();
+                        if (!name) continue;
+
+                        let normName = name.toLowerCase();
+                        if (!racerMap.has(normName)) {
+                            racerMap.set(normName, new Set());
+                            originalNames.set(normName, name);
+                        }
+
+                        let classesList = (row[classesIdx] || "").split('&').map(s => s.trim()).filter(s => s);
+                        let partnersList = (row[partnersIdx] || "").split('&').map(s => s.trim()).filter(s => s);
+
+                        let pIdx = 0;
+                        let partnerMap = {}; // cls -> normPartner
+
+                        for (let cls of classesList) {
+                            classesSet.add(cls);
+                            racerMap.get(normName).add(cls);
+
+                            if (cls.includes('2')) {
+                                let partnerName = (pIdx < partnersList.length) ? partnersList[pIdx] : "";
+                                pIdx++;
+                                if (partnerName) {
+                                    let normPartner = partnerName.toLowerCase().trim();
+                                    partnerMap[cls] = normPartner;
+
+                                    // Ensure partner is also known to the system even if they lack their own row
+                                    if (!racerMap.has(normPartner)) {
+                                        racerMap.set(normPartner, new Set());
+                                        originalNames.set(normPartner, partnerName);
+                                    }
+                                    racerMap.get(normPartner).add(cls);
+                                }
+                            }
+                        }
+
+                        parsedRows.push({ normName, classes: classesList, partnerMap });
+                    }
+
+                    let C = Array.from(classesSet);
+                    if (C.length < 2) {
+                        throw new Error("Not enough distinct classes found to split into two sessions.");
+                    }
+
+                    // Count boats carefully, merging tandem partners
+                    let classBoaters = {};
+                    for (let cls of C) {
+                        let pairs = [];
+                        let solos = [];
+
+                        for (let row of parsedRows) {
+                            if (row.classes.includes(cls)) {
+                                if (cls.includes('2') && row.partnerMap[cls]) {
+                                    pairs.push([row.normName, row.partnerMap[cls]]);
+                                } else {
+                                    solos.push(row.normName);
+                                }
+                            }
+                        }
+
+                        let finalBoats = [];
+                        let pairedRacers = new Set(); // store normName
+
+                        for (let [p1, p2] of pairs) {
+                            if (!pairedRacers.has(p1) && !pairedRacers.has(p2)) {
+                                pairedRacers.add(p1);
+                                pairedRacers.add(p2);
+                                let name1 = originalNames.get(p1) || p1;
+                                let name2 = originalNames.get(p2) || p2;
+                                finalBoats.push(`${name1} & ${name2}`);
+                            }
+                        }
+
+                        for (let solo of solos) {
+                            if (!pairedRacers.has(solo)) {
+                                finalBoats.push(originalNames.get(solo) || solo);
+                            }
+                        }
+                        classBoaters[cls] = finalBoats;
+                    }
+
+                    // Extract multi-class racers for overlap logic
+                    let multiRacers = [];
+                    for (let [racer, classes] of racerMap.entries()) {
+                        if (classes.size >= 2) {
+                            multiRacers.push(Array.from(classes).map(c => C.indexOf(c)));
+                        }
+                    }
+
+                    // Map string arrays to index arrays for fast computing
+                    let classBoatArray = C.map(c => classBoaters[c].length);
+
+                    // Run the optimizer
+                    const { state, eval: resultEval } = runSimulatedAnnealing(C.length, multiRacers, classBoatArray, maxDiff, 600);
+
+                    // Reconstruct sets
+                    let sessionA = [], sessionB = [];
+                    for (let i = 0; i < C.length; i++) {
+                        if (state[i]) sessionA.push(C[i]);
+                        else sessionB.push(C[i]);
+                    }
+
+                    // Find exactly who is overlapping
+                    let setA_Names = new Set(sessionA);
+                    let overlappingRacers = [];
+                    let onlyARacers = [];
+                    let onlyBRacers = [];
+
+                    for (let [normName, classes] of racerMap.entries()) {
+                        let inA = false, inB = false;
+                        for (let cls of classes) {
+                            if (setA_Names.has(cls)) inA = true;
+                            else inB = true;
+                        }
+                        if (inA && inB) {
+                            overlappingRacers.push(originalNames.get(normName));
+                        } else if (inA) {
+                            onlyARacers.push(originalNames.get(normName));
+                        } else if (inB) {
+                            onlyBRacers.push(originalNames.get(normName));
+                        }
+                    }
+
+                    overlappingRacers.sort();
+                    onlyARacers.sort();
+                    onlyBRacers.sort();
+
+                    renderResults(sessionA, sessionB, overlappingRacers, onlyARacers, onlyBRacers, resultEval, classBoaters);
+                    statusEl.textContent = "";
+
+                } catch (e) {
+                    alert("Error: " + e.message);
+                    statusEl.textContent = "";
+                }
+            }, 50);
+        }
+
+        function renderResults(sessionA, sessionB, overlaps, onlyA, onlyB, evalResult, classBoaters) {
+            document.getElementById('results').classList.remove('hidden');
+
+            document.getElementById('overlapCount').textContent = evalResult.overlap;
+
+            const warningEl = document.getElementById('constraintWarning');
+            if (evalResult.valid) {
+                warningEl.classList.add('hidden');
+            } else {
+                warningEl.classList.remove('hidden');
+            }
+
+            const overlapsContainer = document.getElementById('overlapRacersContainer');
+            const overlapsList = document.getElementById('overlapRacersList');
+            if (overlaps.length > 0) {
+                overlapsContainer.classList.remove('hidden');
+                overlapsList.innerHTML = overlaps.map(n => `<li class="py-1">${n}</li>`).join('');
+            } else {
+                overlapsContainer.classList.add('hidden');
+            }
+
+            const exclusiveContainer = document.getElementById('exclusiveRacersContainer');
+            if (onlyA.length > 0 || onlyB.length > 0) {
+                exclusiveContainer.classList.remove('hidden');
+                document.getElementById('onlyARacersList').innerHTML = onlyA.length ? onlyA.map(n => `<li class="py-1">${n}</li>`).join('') : '<li class="py-1 text-gray-400 italic">None</li>';
+                document.getElementById('onlyBRacersList').innerHTML = onlyB.length ? onlyB.map(n => `<li class="py-1">${n}</li>`).join('') : '<li class="py-1 text-gray-400 italic">None</li>';
+            } else {
+                exclusiveContainer.classList.add('hidden');
+            }
+
+            // Build columns for the spreadsheet table
+            let currentBib = 1;
+
+            let colA = [];
+            sessionA.sort().forEach((cls) => {
+                colA.push({ type: 'empty' }); // Blank line before each class name
+                colA.push({ type: 'class', name: cls });
+                classBoaters[cls].sort().forEach(b => {
+                    colA.push({ type: 'boat', bib: currentBib, name: b });
+                    currentBib++;
+                });
+            });
+
+            let colB = [];
+            sessionB.sort().forEach((cls) => {
+                colB.push({ type: 'empty' }); // Blank line before each class name
+                colB.push({ type: 'class', name: cls });
+                classBoaters[cls].sort().forEach(b => {
+                    colB.push({ type: 'boat', bib: currentBib, name: b });
+                    currentBib++;
+                });
+            });
+
+            let maxRows = Math.max(colA.length, colB.length);
+            let tableHTML = `
+                <table class="w-full text-left border-collapse min-w-full">
+                    <thead>
+                        <tr>
+                            <th colspan="2" class="p-3 border-b-2 border-r border-gray-200 bg-emerald-50 text-emerald-900 w-1/2">
+                                <div class="font-bold text-lg">Session A</div>
+                                <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
+                            </th>
+                            <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-purple-50 text-purple-900 w-1/2">
+                                <div class="font-bold text-lg">Session B</div>
+                                <div class="font-normal text-sm mt-1">${sessionB.length} classes | ${evalResult.boatsB} boats</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm text-gray-800">
+            `;
+
+            for(let i=0; i<maxRows; i++) {
+                let itemA = colA[i] || { type: 'empty' };
+                let itemB = colB[i] || { type: 'empty' };
+
+                let tdA = '';
+                if (itemA.type === 'empty') {
+                    tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 h-6"></td>`;
+                } else if (itemA.type === 'class') {
+                    tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 align-top bg-emerald-50/50"><strong>${itemA.name}</strong></td>`;
+                } else if (itemA.type === 'boat') {
+                    tdA = `
+                        <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemA.bib}</td>
+                        <td class="p-2 border-r border-b border-gray-200 align-top">${itemA.name}</td>
+                    `;
+                }
+
+                let tdB = '';
+                if (itemB.type === 'empty') {
+                    tdB = `<td colspan="2" class="p-2 border-b border-gray-200 h-6"></td>`;
+                } else if (itemB.type === 'class') {
+                    tdB = `<td colspan="2" class="p-2 border-b border-gray-200 align-top bg-purple-50/50"><strong>${itemB.name}</strong></td>`;
+                } else if (itemB.type === 'boat') {
+                    tdB = `
+                        <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemB.bib}</td>
+                        <td class="p-2 border-b border-gray-200 align-top">${itemB.name}</td>
+                    `;
+                }
+
+                tableHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        ${tdA}
+                        ${tdB}
+                    </tr>
+                `;
+            }
+            tableHTML += `</tbody></table>`;
+
+            document.getElementById('spreadsheetTableContainer').innerHTML = tableHTML;
+        }
+    </script>
+</body>
+</html>
