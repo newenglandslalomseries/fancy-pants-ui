@@ -35,12 +35,14 @@ To edit the file (assuming you have permission):
 
 * On https://github.com/bjaspan/fancy-pants-ui, click on the
   `current_race.json` file name it to view the file's contents.
-* Type "." which opens the GitHub web editor.
+* In the header bar above the file contents, which starts off with
+  buttons for "Code" and "Blame", click the pencil icon on the right
+  side of the editor.
 * Make your changes.
-* On the left side of the editor, click the "Sourch Control" icon (it
-looks like a litte graph) which is the fourth from the top.
-* Enter a message such as "Updated for 2026 Kenduskeg Slalom."
-* Press "Commit & Push".
+* Click the green "Commit Changes..." button on the top right side of the file.
+* Enter a Commit message such as "Updated for 2026 Kenduskeg Slalom."
+* Choose the "Commit directly to the main branch" radio button.
+* Press "Commit changes".
 
 Wait a few minutes then refresh the scoring app in your browser to see the changes.
 
@@ -63,16 +65,14 @@ To change the spreadsheet that the form writes to:
   to be written to the new spreadsheet you are about to select.
 * Click the three-dots icon again and choose "Unlink form" to disconenct from the current spreadsheet.
 * Click "Link to sheets" at the top of the form.
-* Choose "Select existing spreadsheet" then select the race spreadsheet you want.
+* Choose "Select existing spreadsheet" then select the race spreadsheet you want or paste in its URL.
 * A new sheet named something like "Form Responses N" will be created in the spreadsheet you choose.
 
 Now that you've created a new scoring form results sheet in the race
 spreadsheet, you need to udpate the Raw Results sheet to read from it:
 
-* Vist the Raw Reslts sheet and click on any cell except in the Run # column.
-* The cell will contain a formula like `=INDIRECT(CONCAT("'Form
-    Responses 5'!",ADDRESS(ROW(),COLUMN())))` or `='Form Responses
-    5'!A1`.
+* Vist the Raw Reslts sheet and click on Cell A1.
+* The cell will contain a formula like `=ARRAYFORMULA('Form Responses 5'!A1:A1001)`.
 * Selecth Edit menu > Find and replace.
 * Enter the old form response sheet name, like "Form Responses 5", into the Find box.
 * Enter the new form response sheet name, likee "Form Responses 6", into the Replace with box.
@@ -80,8 +80,6 @@ spreadsheet, you need to udpate the Raw Results sheet to read from it:
 * Check the "Also search within formulas" checkbox.
 * Click "Replace all".
 * Click "Done".
-
-Hopefully that works. :-)
 
 ## Changing the submission form
 
@@ -106,7 +104,7 @@ The results viewer app is https://bjaspan.github.io/fancy-pants-ui/results.html.
 
 ## Adding races to the viewer
 
-The `races.json` file configures the viewer:
+The `races.json` file lists all the races the viewer app can show results for:
 
 ```
 {
@@ -120,13 +118,13 @@ The `races.json` file configures the viewer:
 ```
 
 To add a new race spreadsheet, add a new curly-bracket (`{}`) object
-with keys `name` and `url` to the square-bracket (`[]`) array:
+with keys `name` and `url` to the square-bracket (`[]`) array (following the file-editing instructions in the Scoring app documentation for current_races.json above):
 
 ```
 {
   "races": [
     {
-      "name": "Kenduskeg Slalom 2025",
+      "name": "Kenduskeg Slalom 2026",
       "url": "https://docs.google.com/spreadsheets/d/..."
     },
     {
