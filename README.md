@@ -1,14 +1,50 @@
 This repo contains web apps for the Fancy Pants used by the
-[New England Slalom Series](https://www.nessrace.com/). There are currently three apps:
+[New England Slalom Series](https://www.nessrace.com/). There are
+currently three apps:
 
 * Scoring, for recording gate judging results and raw time for each bib number.
-* Results viewing, for viewing race results in real time.
-* Session optimizer (in development!), for assigning classes to
-  sessions with the fewest racers in both session.
+* Results, for viewing race results in real time.
+* Sessions (in development!), for assigning classes to sessions with
+  the fewest racers in both sessions.
+
+# Deployment
+
+These apps need to work on race weekends or else the race cannot
+run. For increased reliability, this repo is stored on both GitHub and
+GitLab. GitHub is the primary location; all development occurs
+there. GitLab is configured to mirror the repo so all changes on
+GitHub appear there as well.
+
+The web apps are deployed on GitHub Pages and GitLab Pages. The URLs
+are
+
+* Scoring
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/
+* Results
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/results.html
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/results.html
+* Sessions
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/sessions.html
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/sessions.html
+
+# Race preparation
+
+The steps required to prepare for an upcoming race are:
+
+* In advance, prepare the race results spreadsheet.
+  * Update the Fancy Pants Results UI Google Form to link to the
+    spreadsheet.
+  * Update the formulas on the Raw Results sheet of the spreadsheet to read from
+    the new sheet created when the form was linked to the spreadsheet.
+* Update the races.json to include the race results spreadsheet,
+  making sure the upcoming race is listed first in the file.
+* Once the course is set up, edit the current_race.json file to
+  reflect the race name and gate to station assignments.
+
+Details for each of these steps are below.
 
 # Scoring app
-
-The scoring app is https://bjaspan.github.io/fancy-pants-ui/index.html.
 
 ## Editing the race configuration
 
@@ -32,23 +68,13 @@ The `current_race.json` file configures the app:
 * Add or remove stations as necessary. Set max_gate to the highest
   number for that station. In this example, `Start` is judging gates 1
   and 2, `Station A` is judging gates 3, 4, 5, and 6, etc.
-* The station with `"is_finish": true` will have the field to enter raw run time.
-* IMPORTANT: Do not add extra  commas after `max_gate` or the last station entry.
+* The station with `"is_finish": true` will have the field to enter
+  raw run time. The station with is_finish set to true cannot also
+  judge gates, but you can always add an additional station if needed.
+* IMPORTANT: Do not add extra commas after `max_gate` or the last station entry.
 
-To edit the file (assuming you have permission):
-
-* On https://github.com/bjaspan/fancy-pants-ui, click on the
-  `current_race.json` file name it to view the file's contents.
-* In the header bar above the file contents, which starts off with
-  buttons for "Code" and "Blame", click the pencil icon on the right
-  side of the editor.
-* Make your changes.
-* Click the green "Commit Changes..." button on the top right side of the file.
-* Enter a Commit message such as "Updated for 2026 Kenduskeg Slalom."
-* Choose the "Commit directly to the main branch" radio button.
-* Press "Commit changes".
-
-Wait a few minutes then refresh the scoring app in your browser to see the changes.
+After editing the file, wait a few minutes for the changes to deploy
+then refresh the scoring app in your browser to see the changes.
 
 ## The Google Form and spreadsheet
 
@@ -87,14 +113,18 @@ spreadsheet, you need to udpate the Raw Results sheet to read from it:
 
 ## Changing the submission form
 
-If we need to add new fields to or replace the scoring submission form, we have to
-update the "entry IDs" in the HTML and Javascript code in the app. To get the entry IDs for a form:
+If we need to add new fields to or replace the scoring submission
+form, we have to update the "entry IDs" in the HTML and Javascript
+code in the app. To get the entry IDs for a form:
 
 * [Edit](https://docs.google.com/forms/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/viewform?usp=pp_url&entry.1708578938=17) the form.
-* Click the three-dots icon at the top right of the page (not the top-right of the form) and select "Pre-fill form".
-* A new  browser tab will open to display the form. Enter a value for every question that you need the entry ID for.
+* Click the three-dots icon at the top right of the page (not the
+  top-right of the form) and select "Pre-fill form".
+* A new browser tab will open to display the form. Enter a value for
+  every question that you need the entry ID for.
 * At the bottom of the form, click "Get link".
-* Click the "Copy link" button that appears. This copies a pre-filled form URL to the copy-and-paste buffer.
+* Click the "Copy link" button that appears. This copies a pre-filled
+  form URL to the copy-and-paste buffer.
 
 The pre-filled form contains GET query parameters for each form
 question that had a value. For example, when I only clicked on the
@@ -102,9 +132,7 @@ question that had a value. For example, when I only clicked on the
 `https://docs.google.com/forms/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/viewform?usp=pp_url&entry.1989426203=Touch`
 so `entry.1989426203` is the entry ID for the Gate #50 question.
 
-# Results viewer app
-
-The results viewer app is https://bjaspan.github.io/fancy-pants-ui/results.html.
+# Results app
 
 ## Adding races to the viewer
 
@@ -122,7 +150,7 @@ The `races.json` file lists all the races the viewer app can show results for:
 ```
 
 To add a new race spreadsheet, add a new curly-bracket (`{}`) object
-with keys `name` and `url` to the square-bracket (`[]`) array (following the file-editing instructions in the Scoring app documentation for current_races.json above):
+with keys `name` and `url` to the square-bracket (`[]`) array:
 
 ```
 {
@@ -146,5 +174,9 @@ Add a comma between the name and url values and between entries in the
 array, but not after the url value or after the final entry in the
 array.
 
-The results viewer displays the races in the order they appear in the
-file and selects the first race in the file when initially loaded.
+The results viewer can display results for any file in the races.json
+file. It selects the first race in the file when initially loaded.
+
+# Sessions app
+
+TODO.
