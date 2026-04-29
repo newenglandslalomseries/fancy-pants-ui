@@ -585,11 +585,6 @@
                 <button type="submit" id="submit-btn" class="btn w-full bg-blue-600 text-white p-4 rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
                     Submit
                 </button>
-
-                <!-- Reset Button -->
-                <button type="button" id="reset-btn" class="btn w-full bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 p-3 rounded-lg text-md font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out mt-3">
-                    Change Station
-                </button>
             </form>
         </div>
     </div>
@@ -624,7 +619,6 @@
             const timeInput = document.getElementById('time-input');
             const statusMessage = document.getElementById('status-message');
             const submitBtn = document.getElementById('submit-btn');
-            const resetBtn = document.getElementById('reset-btn');
             const loadingState = document.getElementById('loading-state');
             const loadingError = document.getElementById('loading-error');
             const formContent = document.getElementById('form-content');
@@ -841,14 +835,6 @@
 
                 // Set up event listeners
                 stationSelector.addEventListener('change', updateFormVisibility);
-                resetBtn.addEventListener('click', () => {
-                    form.reset(); // Full reset
-                    stationSelector.disabled = false; // Re-enable selector
-                    updateFormVisibility(); // Hide all conditional fields
-                    statusMessage.classList.add('hidden');
-                    // Re-initialize the app to fetch new metadata
-                    initializeApp();
-                });
             }
 
             // Auto-format the time input (Right-to-Left fill)
