@@ -19,8 +19,8 @@ The web apps are deployed on GitHub Pages and GitLab Pages. The URLs
 are
 
 * Scoring
-  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/
-  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/scoring.html
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/scoring.html
 * Results
   * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/results.html
   * GitLab: https://fancy-pants-ui-e906da.gitlab.io/results.html
