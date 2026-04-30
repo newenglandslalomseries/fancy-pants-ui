@@ -10,10 +10,12 @@ currently three apps:
 # Deployment
 
 These apps need to work on race weekends or else the race cannot
-run. For increased reliability, this repo is stored on both GitHub and
-GitLab. GitHub is the primary location; all development occurs
-there. GitLab is configured to mirror the repo so all changes on
-GitHub appear there as well.
+run. For increased reliability, this repo is stored on both
+[GitHub](https://github.com/newenglandslalomseries/fancy-pants-ui) and
+[GitLab](https://gitlab.com/aca-ne-group/fancy-pants-ui). GitHub is
+the primary location; all development occurs there. GitLab is
+configured to mirror the repo so all changes on GitHub appear there as
+well.
 
 The web apps are deployed on GitHub Pages and GitLab Pages. The URLs
 are
@@ -78,18 +80,16 @@ then refresh the scoring app in your browser to see the changes.
 
 ## The Google Form and spreadsheet
 
-The scoring app submits results to this [Google
-Form](https://docs.google.com/forms/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/viewform). The
-app contains specific field IDs from this form so it can only work
-with this specific form. However, the form can be changed to write its results to any spreadsheet.
+The scoring app submits results to a Google Form; it gets the URL for
+the form from the 'u' query parameter. The app contains specific field
+IDs from this form so it can only work with this specific
+form. However, the form can be changed to write its results to any
+spreadsheet.
 
 To change the spreadsheet that the form writes to:
 
-* Edit the form by clicking the pencil icon in the lower right corner
-  or just visit the [edit
-  page](https://docs.google.com/forms/d/1WELca83m8ENYqJy3QoDPX_Ncn0fcJ_WWDBNn6FVMtRw/edit)
-  directly.
-* Click on [responses](https://docs.google.com/forms/d/1WELca83m8ENYqJy3QoDPX_Ncn0fcJ_WWDBNn6FVMtRw/edit#responses).
+* Edit the form by clicking the pencil icon in the lower right corner.
+* Click on the Responses tab.
 * Click the three-dots icon on the top right side of the form and
   choose "Delete All Responses" unless you want the current responses
   to be written to the new spreadsheet you are about to select.
@@ -117,7 +117,7 @@ If we need to add new fields to or replace the scoring submission
 form, we have to update the "entry IDs" in the HTML and Javascript
 code in the app. To get the entry IDs for a form:
 
-* [Edit](https://docs.google.com/forms/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/viewform?usp=pp_url&entry.1708578938=17) the form.
+* Edit the form.
 * Click the three-dots icon at the top right of the page (not the
   top-right of the form) and select "Pre-fill form".
 * A new browser tab will open to display the form. Enter a value for
@@ -128,9 +128,9 @@ code in the app. To get the entry IDs for a form:
 
 The pre-filled form contains GET query parameters for each form
 question that had a value. For example, when I only clicked on the
-"Clean" button for gate 50, the pre-filled form link was
-`https://docs.google.com/forms/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/viewform?usp=pp_url&entry.1989426203=Touch`
-so `entry.1989426203` is the entry ID for the Gate #50 question.
+"Clean" button for gate 25, the pre-filled form link was
+`https://docs.google.com/forms/d/e/.../viewform?usp=pp_url&entry.1989426203=Touch`
+so `entry.1989426203` is the entry ID for the Gate #25 question.
 
 # Results app
 
@@ -143,7 +143,7 @@ The `races.json` file lists all the races the viewer app can show results for:
   "races": [
     {
       "name": "Farmington Slalom 2025",
-      "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+      "url": "https://docs.google.com/spreadsheets/d/.../edit?gid=1657054501#gid=1657054501"
     }
   ]
 }
@@ -157,11 +157,11 @@ with keys `name` and `url` to the square-bracket (`[]`) array:
   "races": [
     {
       "name": "Kenduskeg Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/..."
+      "url": "https://docs.google.com/spreadsheets/d/...?gid=1657054501#gid=1657054501"
     },
     {
       "name": "Farmington Slalom 2025",
-      "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+      "url": "https://docs.google.com/spreadsheets/d/...?gid=1657054501#gid=1657054501"
     }
   ]
 }
