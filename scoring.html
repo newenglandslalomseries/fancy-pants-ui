@@ -629,15 +629,19 @@
             const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
             const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
 
-            // Read 'v' from URL parameters and set it in the hidden input
+            // Read URL parameters
             const urlParams = new URLSearchParams(window.location.search);
+
             const vParam = urlParams.get('v');
             if (vParam) {
                 document.getElementById('v-hidden-input').value = vParam;
             }
 
-            // This is the Google Form's actual submission URL.
-            const SUBMISSION_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/formResponse';
+            // Fallback submission URL
+            const DEFAULT_SUBMISSION_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/formResponse';
+
+            // Use 'u' query parameter if present, otherwise use fallback
+            const SUBMISSION_URL = urlParams.get('u') || DEFAULT_SUBMISSION_URL;
 
             // Global maps to store station->gate mapping and finish status
             let stationGateMap = {};
@@ -745,7 +749,6 @@
                 // Sync the selected station to the hidden input for form submission
                 document.getElementById('station-hidden-input').value = selectedStation || "";
 
-                // If no station is selected, hide everything
                 if (!selectedStation) {
                     bibSection.classList.add('hidden');
                     gatesContainer.classList.add('hidden');
