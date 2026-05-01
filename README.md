@@ -7,6 +7,43 @@ currently three apps:
 * Sessions (in development!), for assigning classes to sessions with
   the fewest racers in both sessions.
 
+# Architecture
+
+Fancy Pants consists of these components:
+
+* The Registration form, a per-race Google Form submitted by racers
+  for collecting racer name, contact information, classes to enter,
+  and tandem boat partner names.
+* The Results form, a single Google Form form shared by all races
+  submitted by teh Scoring app for collecting race results including
+  bib number, gates touched or missed, and run time.
+* A Google Spreadsheet for each race. The spreadsheet contains
+  multiple sheets:
+  * Website-Registration: Submissions from the Registration form.
+  * Registartion: Summary of racer name, class, tandem partner, bib
+    number, and work assignment, manually entered by the race
+    organizer based on Website-Registration and the Sessions app.
+  * Form Responses N: Submissions from the Results form.  Each Results
+    submission contains only a subset of the gate results or the raw
+    run time for a single run of a single bib number.
+  * Raw Results: Intermediate computation on Form Responses to
+    determine the Run # for each results submission.
+  * Unfiltered Results: Computations combining the Registration sheet
+    and Raw Results to determine name, class, raw time, combined penalties
+    across all stations, and total score for each run for each bib,
+    along with class rankings.
+  * Live Standings: A calculated table showing place rankings (1st
+    through Nth) for each class.
+* The Sessions app reads racer, tandem partner, and class information
+  from the Website Registration sheet to determine class to session
+  mappings and assign bib numbers to racers. The race organizer then
+  manually constructs the Registration sheet based on this
+  information.
+* The Scoring app submits results to the Results Responses sheet for a
+  single station and bib at a time.
+* The Results app reads the Unfiltered Results sheet and displays
+  summary and detail information by class and racer.
+
 # Deployment
 
 These apps need to work on race weekends or else the race cannot
