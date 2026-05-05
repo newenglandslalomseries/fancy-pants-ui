@@ -478,8 +478,8 @@
             const selectedClass = document.getElementById('classSelect').value;
 
             select.innerHTML = selectedClass
-                ? `<option value="">-- All racers in ${selectedClass} --</option>`
-                : '<option value="">-- All racers --</option>';
+                ? `<option value="">All racers in ${selectedClass}</option>`
+                : '<option value="">All racers</option>';
 
             const uniqueNames = [...new Set(rows.map(r => r[COL_NAME]).filter(Boolean))].sort();
 
