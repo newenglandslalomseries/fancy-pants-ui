@@ -9,6 +9,9 @@ currently three apps:
 
 # Architecture
 
+[![Architecture diagram](architecture_diagram_small.png)](architecture_diagram.png)
+
+
 Fancy Pants consists of these components:
 
 * The Registration form, a per-race Google Form submitted by racers
