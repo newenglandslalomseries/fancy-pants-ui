@@ -136,6 +136,10 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
+                    <div id="tandemCheckboxGroup" class="mt-2 flex items-center gap-2 hidden">
+                        <input type="checkbox" id="showTandem" onchange="handleSelectionChange()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                        <label for="showTandem" class="text-sm text-gray-600 cursor-pointer">Also show tandem results</label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -495,11 +499,31 @@
 
         function handleSelectionChange() {
             const nameValue = document.getElementById('bibSelect').value;
+            const tandemGroup = document.getElementById('tandemCheckboxGroup');
+            
             if (nameValue) {
-                const racerRows = allData.filter(r => r[COL_NAME] === nameValue);
+                const otherNames = [...new Set(allData.map(r => r[COL_NAME]).filter(n => n && n !== nameValue))];
+                const isSubstringOfOther = otherNames.some(n => n.includes(nameValue));
+                
+                if (isSubstringOfOther) {
+                    tandemGroup.classList.remove('hidden');
+                } else {
+                    tandemGroup.classList.add('hidden');
+                    document.getElementById('showTandem').checked = false;
+                }
+                
+                const racerRows = allData.filter(r => {
+                    if (document.getElementById('showTandem').checked) {
+                        return r[COL_NAME] && r[COL_NAME].includes(nameValue);
+                    } else {
+                        return r[COL_NAME] === nameValue;
+                    }
+                });
                 populateClassSelect(racerRows);
             } else {
                 populateClassSelect(allData);
+                tandemGroup.classList.add('hidden');
+                document.getElementById('showTandem').checked = false;
             }
             updateDisplay();
         }
@@ -524,6 +548,7 @@
             const nameValue = document.getElementById('bibSelect').value;
             const classValue = document.getElementById('classSelect').value;
             const markerControls = document.getElementById('individualMarkerControls');
+            const tandemGroup = document.getElementById('tandemCheckboxGroup');
 
             if (nameValue) {
                 markerControls.classList.remove('hidden');
@@ -532,13 +557,23 @@
             }
 
             let filteredResults = allData;
-            if (classValue && nameValue) {
-                filteredResults = allData.filter(row => row[COL_CLASS] === classValue && row[COL_NAME] === nameValue);
-            } else if (classValue) {
-                filteredResults = allData.filter(row => row[COL_CLASS] === classValue);
-            } else if (nameValue) {
-                filteredResults = allData.filter(row => row[COL_NAME] === nameValue);
-            }
+            const showTandem = tandemGroup && !tandemGroup.classList.contains('hidden') && document.getElementById('showTandem').checked;
+
+            const racerFilter = (row) => {
+                if (!nameValue) return true;
+                if (showTandem) {
+                    return row[COL_NAME] && row[COL_NAME].includes(nameValue);
+                } else {
+                    return row[COL_NAME] === nameValue;
+                }
+            };
+
+            const classFilter = (row) => {
+                if (!classValue) return true;
+                return row[COL_CLASS] === classValue;
+            };
+
+            filteredResults = allData.filter(row => classFilter(row) && racerFilter(row));
 
             updateCharts();
             renderResults(filteredResults);
@@ -598,9 +633,12 @@
 
             const annotations = {};
             if (nameValue) {
+                const showTandem = !document.getElementById('tandemCheckboxGroup').classList.contains('hidden') && document.getElementById('showTandem').checked;
+                const racerFilter = (row) => showTandem ? (row[COL_NAME] && row[COL_NAME].includes(nameValue)) : row[COL_NAME] === nameValue;
+                
                 const racerRuns = selectedClass
-                    ? allData.filter(row => row[COL_NAME] === nameValue && row[COL_CLASS] === selectedClass)
-                    : allData.filter(row => row[COL_NAME] === nameValue);
+                    ? allData.filter(row => row[COL_CLASS] === selectedClass && racerFilter(row))
+                    : allData.filter(racerFilter);
 
                 racerRuns.forEach((run, idx) => {
                     const runTime = parseToNumeric(run[COL_TIME]);
