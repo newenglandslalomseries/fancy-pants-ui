@@ -1,11 +1,10 @@
 {
-  "race_name": "Kenduskeag TEST",
+  "race_name": "Kenduskeag Slalom 2026",
   "stations": [
-    { "name": "Start", "max_gate": 1 },
-    { "name": "Station A", "max_gate": 5 },
-    { "name": "Station B", "max_gate": 12 },
-    { "name": "Station C", "max_gate": 17 },
-    { "name": "Station D", "max_gate": 25 },
+    { "name": "Station A", "max_gate": 4 },
+    { "name": "Station B", "max_gate": 9 },
+    { "name": "Station C", "max_gate": 14 },
+    { "name": "Station D", "max_gate": 19 },
     { "name": "Finish", "is_finish": true }
   ]
 }
