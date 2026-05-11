@@ -572,12 +572,17 @@
                 <!-- Time Field (Hidden by default) -->
                 <div id="time-section" class="mb-5 hidden">
                     <label for="time-input" class="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Time (MM:SS.HH)</label>
-                    <input type="text" id="time-input" name="entry.873039571"
-                           inputmode="numeric"
-                           class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="e.g., 1:45.23"
-                           pattern="^\d{1,2}:\d{2}\.\d{2}$"
-                           title="Please enter a time in MM:SS.HH format.">
+                    <div class="flex space-x-2">
+                        <input type="text" id="time-input" name="entry.873039571"
+                               inputmode="numeric"
+                               class="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-lg bg-white dark:bg-gray-700 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="e.g., 1:45.23"
+                               pattern="^\d{1,2}:\d{2}\.\d{2}$"
+                               title="Please enter a time in MM:SS.HH format.">
+                        <button type="button" id="dnf-btn" class="btn bg-red-600 text-white p-3 rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out whitespace-nowrap">
+                            DNF
+                        </button>
+                    </div>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Digits will be auto-formatted.</p>
                 </div>
 
@@ -623,6 +628,7 @@
             const statusMessage = document.getElementById('status-message');
             const submitBtn = document.getElementById('submit-btn');
             const loadingState = document.getElementById('loading-state');
+            const dnfBtn = document.getElementById('dnf-btn');
             const loadingError = document.getElementById('loading-error');
             const formContent = document.getElementById('form-content');
             const raceTitle = document.getElementById('race-title');
@@ -649,6 +655,7 @@
             // Global maps to store station->gate mapping and finish status
             let stationGateMap = {};
             let isFinishStation = {};
+            let currentSubmissionIsDNF = false;
 
             /**
              * Fetches and parses the race metadata from a local JSON file.
@@ -944,9 +951,34 @@
                 confirmationModal.classList.remove('hidden');
             });
 
+            // Handle DNF Button
+            dnfBtn.addEventListener('click', function() {
+                // Validate Bib Number
+                const bibNumberValue = bibInput.value.trim();
+                if (!/^\d+$/.test(bibNumberValue)) {
+                    statusMessage.textContent = 'Error: Bib Number must be a whole number.';
+                    statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
+                    statusMessage.classList.remove('hidden');
+                    bibInput.focus();
+                    return;
+                }
+
+                // Build Confirmation Summary
+                confirmationSummary.innerHTML = '';
+                let summaryHtml = '';
+                summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Station:</strong> ${stationSelector.value}</p>`;
+                summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Bib Number:</strong> ${bibInput.value}</p>`;
+                summaryHtml += `<p class="mt-2"><strong class="font-semibold text-gray-800 dark:text-gray-100">Time:</strong> <span class="font-bold text-red-600">DNF (999.0)</span></p>`;
+                
+                confirmationSummary.innerHTML = summaryHtml;
+                currentSubmissionIsDNF = true;
+                confirmationModal.classList.remove('hidden');
+            });
+
             // Handle Modal Cancel Button
             cancelSubmitBtn.addEventListener('click', () => {
                 confirmationModal.classList.add('hidden');
+                currentSubmissionIsDNF = false;
             });
 
             // Handle Modal Confirm Button (Actual Submit)
@@ -961,7 +993,10 @@
                 const selectedStation = stationSelector.value; // Save station
 
                 // Convert time (MM:SS.HH) to total decimal seconds for the Google Form
-                if (isFinishStation[selectedStation] && timeInput.value) {
+                if (currentSubmissionIsDNF) {
+                    formData.set('entry.873039571', '999.0');
+                    currentSubmissionIsDNF = false; // Reset
+                } else if (isFinishStation[selectedStation] && timeInput.value) {
                     const [minutesStr, rest] = timeInput.value.split(':');
                     if (minutesStr && rest) {
                         const minutes = parseInt(minutesStr, 10);
