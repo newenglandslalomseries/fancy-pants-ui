@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Awards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-900">
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-indigo-800 mb-2">Race Awards</h1>
+            <p class="text-gray-600 text-sm">Class Winners & Random Drawings</p>
+        </header>
+
+        <!-- Race Selector Section -->
+        <div class="mb-6 px-1">
+            <div class="flex items-center gap-2 w-full">
+                <!-- Race Selector -->
+                <div class="flex-1 min-w-0">
+                    <select id="raceSelect" onchange="handleRaceChange()"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white font-semibold text-indigo-900 truncate">
+                        <option value="">Loading races...</option>
+                    </select>
+                </div>
+
+                <!-- Refresh Button -->
+                <button onclick="refreshData()" id="refreshBtn" title="Refresh data from sheet"
+                    class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all flex items-center justify-center shadow-sm active:transform active:scale-95">
+                    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                        <path d="M16 16h5v5" />
+                    </svg>
+                </button>
+            </div>
+            <div id="statusMessage" class="mt-2 text-sm hidden font-medium"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 flex justify-between items-center">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="randomizeClasses" onchange="updateDisplay()"
+                    class="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                <span class="text-gray-700 font-medium">Randomize Class Order</span>
+            </label>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="hidden flex flex-col items-center justify-center py-12">
+            <div class="loading-spinner mb-4 border-left-indigo-500"></div>
+            <p id="loadingText" class="text-gray-500 animate-pulse">Processing awards...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState"
+            class="hidden text-center py-20 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No data available</h3>
+            <p class="mt-1 text-sm text-gray-500">The spreadsheet appears to be empty or misformatted.</p>
+        </div>
+
+        <!-- Awards Section -->
+        <div id="awardsContainer" class="space-y-6 mb-12">
+            <!-- Awards cards will be injected here -->
+        </div>
+
+        <!-- Random Drawings Section -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Random Drawings</h2>
+                <button onclick="reshuffleDrawings()"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 3 21 3 21 8"></polyline>
+                        <line x1="4" y1="20" x2="21" y2="3"></line>
+                        <polyline points="21 16 21 21 16 21"></polyline>
+                        <line x1="15" y1="15" x2="21" y2="21"></line>
+                        <line x1="4" y1="4" x2="9" y2="9"></line>
+                    </svg>
+                    Reshuffle
+                </button>
+            </div>
+            <div id="drawingsContainer" class="text-lg text-gray-700 leading-relaxed space-y-2">
+                <!-- Randomized names will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-xs text-gray-400 pb-8 mt-auto px-4">
+        <p id="sourceInfo" class="truncate">Source: ...</p>
+    </footer>
+
+    <script>
+        // Fallback Configuration
+        const FALLBACK_RACES = {
+            "races": [
+                {
+                    "name": "Farmington Slalom 2025",
+                    "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+                }
+            ]
+        };
+
+        const COL_BIB = 'Bib #';
+        const COL_NAME = 'Name';
+        const COL_CLASS = 'Class';
+        const COL_TIME = 'Raw Time';
+        const COL_SCORE = 'Total Score';
+
+        // Potential penalty columns
+        const COL_PENALTIES = 'Total Penalties';
+        const COL_TOUCHES = 'Gates Touched';
+        const COL_FIFTIES = 'Gates Fiftied';
+
+        // State
+        let currentRaces = [];
+        let sheetId = '';
+        let gid = '';
+        let allData = [];
+        let uniqueNames = [];
+
+        async function init() {
+            await loadRaces();
+        }
+
+        async function loadRaces() {
+            const raceSelect = document.getElementById('raceSelect');
+            try {
+                const response = await fetch('races.json');
+                if (!response.ok) throw new Error('File not found');
+                const data = await response.json();
+                currentRaces = data.races;
+            } catch (e) {
+                currentRaces = FALLBACK_RACES.races;
+            }
+
+            raceSelect.innerHTML = '';
+            currentRaces.forEach((race, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = race.name;
+                raceSelect.appendChild(option);
+            });
+
+            if (currentRaces.length > 0) {
+                handleRaceChange();
+            }
+        }
+
+        function handleRaceChange() {
+            const raceIndex = document.getElementById('raceSelect').value;
+            const race = currentRaces[raceIndex];
+            if (!race) return;
+
+            const idMatch = race.url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            sheetId = idMatch ? idMatch[1] : '';
+
+            const gidMatch = race.url.match(/gid=([0-9]+)/);
+            gid = gidMatch ? gidMatch[1] : '0';
+
+            document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: ${gid}`;
+
+            allData = [];
+            uniqueNames = [];
+            preloadData();
+        }
+
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/);
+            if (lines.length < 1) return { headers: [], rows: [] };
+
+            const splitRow = (row) => {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < row.length; i++) {
+                    const char = row[i];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current.trim());
+                return result.map(v => v.replace(/^"|"$/g, ''));
+            };
+
+            // Detect if headers are in row 1 or 2 by looking for "Bib #"
+            let headerIdx = 1; // Default to row 2
+            if (lines[0]) {
+                const firstRowCols = splitRow(lines[0]);
+                if (firstRowCols.includes(COL_BIB)) {
+                    headerIdx = 0;
+                }
+            }
+
+            const headers = splitRow(lines[headerIdx]);
+            const results = [];
+
+            for (let i = headerIdx + 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = splitRow(lines[i]);
+                const obj = {};
+                headers.forEach((header, index) => {
+                    if (header) {
+                        obj[header] = values[index] || '';
+                    }
+                });
+                results.push(obj);
+            }
+            return { headers, rows: results };
+        }
+
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+
+            btn.disabled = true;
+            icon.classList.add('refresh-spin');
+
+            await preloadData();
+
+            icon.classList.remove('refresh-spin');
+            btn.disabled = false;
+        }
+
+        async function preloadData() {
+            const loading = document.getElementById('loading');
+            const emptyState = document.getElementById('emptyState');
+            const statusMessage = document.getElementById('statusMessage');
+
+            loading.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            statusMessage.classList.add('hidden');
+            document.getElementById('awardsContainer').innerHTML = '';
+            document.getElementById('drawingsContainer').innerHTML = '';
+
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&t=${new Date().getTime()}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch spreadsheet.');
+
+                const csvText = await response.text();
+                const { headers, rows } = parseCSV(csvText);
+
+                if (!headers.includes(COL_BIB) || !headers.includes(COL_NAME) || !headers.includes(COL_CLASS)) {
+                    throw new Error(`Critical columns (Bib #, Name, Class) not found.`);
+                }
+
+                // Filter out empty rows
+                allData = rows.filter(row => row[COL_NAME] && row[COL_CLASS]);
+
+                // Collect unique names for drawing
+                uniqueNames = [...new Set(allData.map(r => r[COL_NAME]))].filter(Boolean);
+
+                if (allData.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    updateDisplay();
+                    reshuffleDrawings();
+                }
+
+            } catch (error) {
+                console.error(error);
+                showMessage(error.message, 'text-red-500');
+                allData = [];
+                emptyState.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function parseToNumeric(val) {
+            if (!val) return null;
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string' && val.includes(':')) {
+                const parts = val.split(':').map(Number);
+                if (parts.length === 2) return (parts[0] * 60) + parts[1];
+                if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+            }
+            const num = parseFloat(val);
+            return isNaN(num) ? null : num;
+        }
+
+        function extractPenaltyString(row) {
+            let num = 0;
+            if (row[COL_PENALTIES] && parseToNumeric(row[COL_PENALTIES]) > 0) {
+                num = parseToNumeric(row[COL_PENALTIES]);
+            } else {
+                const touches = row[COL_TOUCHES] ? row[COL_TOUCHES].toString().replace(/Gate\s*#/gi, '').trim() : '';
+                const fifties = row[COL_FIFTIES] ? row[COL_FIFTIES].toString().replace(/Gate\s*#/gi, '').trim() : '';
+
+                let tCount = touches ? touches.split(',').length : 0;
+                let fCount = fifties ? fifties.split(',').length : 0;
+
+                num = (tCount * 2) + (fCount * 50);
+            }
+
+            return num > 0 ? num.toString() : 'Clean';
+        }
+
+        // Shuffle array using Fisher-Yates algorithm
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function updateDisplay() {
+            if (allData.length === 0) return;
+
+            // 1. Group by Class
+            const classGroups = allData.reduce((acc, row) => {
+                const cls = row[COL_CLASS];
+                if (!acc[cls]) acc[cls] = [];
+                acc[cls].push(row);
+                return acc;
+            }, {});
+
+            let classes = Object.keys(classGroups);
+
+            // 2. Sort classes
+            const isRandomized = document.getElementById('randomizeClasses').checked;
+            if (isRandomized) {
+                classes = shuffleArray(classes);
+            } else {
+                classes.sort();
+            }
+
+            const container = document.getElementById('awardsContainer');
+            let html = '';
+
+            // 3. Process each class and build HTML
+            classes.forEach(cls => {
+                const classData = classGroups[cls];
+
+                // Group by Name within the class to find the best run
+                const racerGroups = classData.reduce((acc, row) => {
+                    const name = row[COL_NAME];
+                    if (!acc[name]) acc[name] = [];
+                    acc[name].push(row);
+                    return acc;
+                }, {});
+
+                const racersBestRuns = [];
+
+                for (const [name, runs] of Object.entries(racerGroups)) {
+                    let bestRun = null;
+                    let bestScore = Infinity;
+
+                    runs.forEach(run => {
+                        const score = parseToNumeric(run[COL_SCORE]);
+                        if (score !== null && score < bestScore) {
+                            bestScore = score;
+                            bestRun = run;
+                        }
+                    });
+
+                    if (bestRun) {
+                        bestRun._numericScore = bestScore;
+                        racersBestRuns.push(bestRun);
+                    }
+                }
+
+                // Sort racers in class by their best score ascending
+                racersBestRuns.sort((a, b) => a._numericScore - b._numericScore);
+
+                // Take top 3
+                const top3 = racersBestRuns.slice(0, 3);
+
+                if (top3.length === 0) return; // Skip if no valid scores
+
+                // Render Class Card
+                html += `
+                    <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                        <div class="border-b border-gray-200 px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between bg-white">
+                            <h3 class="text-xl font-bold text-black mb-2 sm:mb-0">${cls}</h3>
+                            <div class="flex items-center gap-4 text-xs font-bold text-black uppercase tracking-wider">
+                                <span class="w-20 text-center">Penalties</span>
+                                <span class="w-20 text-right">Total</span>
+                            </div>
+                        </div>
+                        <div class="p-0">
+                            <ul class="divide-y divide-gray-100">
+                `;
+
+                const placeLabels = ['1st', '2nd', '3rd'];
+
+                top3.forEach((racer, index) => {
+                    const placeText = placeLabels[index];
+                    const score = racer[COL_SCORE] || '—';
+                    const penaltyString = extractPenaltyString(racer);
+
+                    html += `
+                        <li class="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white">
+                            <div class="flex items-center gap-4 mb-2 sm:mb-0">
+                                <span class="w-10 font-bold text-sm text-black">${placeText}</span>
+                                <span class="text-lg font-bold text-black">${racer[COL_NAME]}</span>
+                            </div>
+                            <div class="flex items-center gap-4 text-sm">
+                                <span class="font-medium text-black w-20 text-center inline-block">${penaltyString}</span>
+                                <span class="font-mono font-bold text-black text-lg w-20 text-right inline-block">${score}</span>
+                            </div>
+                        </li>
+                    `;
+                });
+
+                html += `
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function reshuffleDrawings() {
+            if (uniqueNames.length === 0) return;
+
+            const shuffled = shuffleArray(uniqueNames);
+            const container = document.getElementById('drawingsContainer');
+
+            let html = '';
+            shuffled.forEach(name => {
+                html += `<div class="py-2 border-b border-gray-50 last:border-0 font-medium text-gray-800">${name}</div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function showMessage(text, colorClass) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.innerText = text;
+            statusMessage.className = `mt-2 text-sm font-medium ${colorClass}`;
+            statusMessage.classList.remove('hidden');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>
