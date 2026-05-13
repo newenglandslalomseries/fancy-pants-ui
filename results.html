@@ -262,6 +262,7 @@
         let sheetId = '';
         let gid = '';
         let allData = [];
+        let errorData = [];
         let statsChart = null;
 
         async function init() {
@@ -308,6 +309,7 @@
             document.getElementById('bibSelect').value = "";
             document.getElementById('classSelect').value = "";
             allData = [];
+            errorData = [];
 
             preloadData();
         }
@@ -414,12 +416,11 @@
                     throw new Error(`Critical column "${COL_BIB}" not found.`);
                 }
 
-                const errorRows = rows.filter(row => {
+                errorData = rows.filter(row => {
                     const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
                     const time = parseToNumeric(row[COL_TIME]);
                     return (runNum !== '1' && runNum !== '2') || time === 0;
                 });
-                renderErrors(errorRows);
 
                 allData = rows.filter(row => {
                     const time = parseToNumeric(row[COL_TIME]);
@@ -437,6 +438,7 @@
                 console.error(error);
                 showMessage(error.message, 'text-red-500');
                 allData = [];
+                errorData = [];
                 emptyState.classList.remove('hidden');
                 // Hide table/results on failure
                 document.getElementById('resultsContainer').innerHTML = '';
@@ -588,9 +590,11 @@
             };
 
             filteredResults = allData.filter(row => classFilter(row) && racerFilter(row));
+            const filteredErrors = errorData.filter(row => classFilter(row) && racerFilter(row));
 
             updateCharts();
             renderResults(filteredResults);
+            renderErrors(filteredErrors);
         }
 
         function parseToNumeric(val) {
@@ -810,9 +814,9 @@
                                 <tr>
                                     <th class="px-3 py-2 border-b border-red-200">Bib</th>
                                     <th class="px-3 py-2 border-b border-red-200">Name</th>
+                                    <th class="px-3 py-2 border-b border-red-200">Class</th>
                                     <th class="px-3 py-2 border-b border-red-200">Run</th>
                                     <th class="px-3 py-2 border-b border-red-200">Raw Time</th>
-                                    <th class="px-3 py-2 border-b border-red-200">Error</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-red-100">
@@ -821,25 +825,17 @@
             errorRows.forEach(row => {
                 const bib = row['Bib #'] || '—';
                 const name = row['Name'] || '—';
+                const cls = row[COL_CLASS] || '—';
                 const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
                 const timeStr = row[COL_TIME] || '—';
-                const time = parseToNumeric(row[COL_TIME]);
-                
-                let reasons = [];
-                if (runNum !== '1' && runNum !== '2') {
-                    reasons.push('Invalid Run Number');
-                }
-                if (time === 0) {
-                    reasons.push('Raw Time is 0');
-                }
 
                 tableHtml += `
                     <tr class="hover:bg-red-100 transition-colors">
                         <td class="px-3 py-2 font-bold text-red-900">${bib}</td>
                         <td class="px-3 py-2 text-red-800 font-semibold">${name}</td>
+                        <td class="px-3 py-2 text-red-800">${cls}</td>
                         <td class="px-3 py-2 font-bold text-red-800">${runNum}</td>
                         <td class="px-3 py-2 text-red-800">${timeStr}</td>
-                        <td class="px-3 py-2 text-red-600 font-bold">${reasons.join(', ')}</td>
                     </tr>
                 `;
             });
