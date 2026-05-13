@@ -188,6 +188,11 @@
             </div>
         </div>
 
+        <!-- Errors Section -->
+        <div id="errorsContainer" class="mb-8 hidden">
+            <!-- Errors table will be injected here -->
+        </div>
+
         <!-- Results Section (Always Visible below graph) -->
         <div id="resultsContainer" class="mb-8">
             <!-- Table will be injected here -->
@@ -388,12 +393,14 @@
             const loading = document.getElementById('loading');
             const emptyState = document.getElementById('emptyState');
             const statusMessage = document.getElementById('statusMessage');
+            const errorsContainer = document.getElementById('errorsContainer');
 
             bibSelect.disabled = true;
             classSelect.disabled = true;
             loading.classList.remove('hidden');
             emptyState.classList.add('hidden');
             statusMessage.classList.add('hidden'); // Clear previous error messages
+            if (errorsContainer) errorsContainer.classList.add('hidden');
 
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&t=${new Date().getTime()}`;
@@ -406,6 +413,13 @@
                 if (!headers.includes(COL_BIB)) {
                     throw new Error(`Critical column "${COL_BIB}" not found.`);
                 }
+
+                const errorRows = rows.filter(row => {
+                    const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
+                    const time = parseToNumeric(row[COL_TIME]);
+                    return (runNum !== '1' && runNum !== '2') || time === 0;
+                });
+                renderErrors(errorRows);
 
                 allData = rows.filter(row => {
                     const time = parseToNumeric(row[COL_TIME]);
@@ -769,6 +783,73 @@
                 </div>
             `;
 
+            container.innerHTML = tableHtml;
+        }
+
+        function renderErrors(errorRows) {
+            const container = document.getElementById('errorsContainer');
+            if (!container) return;
+            
+            if (!errorRows || errorRows.length === 0) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+
+            container.classList.remove('hidden');
+
+            let tableHtml = `
+                <div class="bg-red-50 rounded-xl shadow-md border border-red-200 p-6">
+                    <h3 class="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        Errors to fix
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-red-100 text-red-800 uppercase text-[10px] font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-3 py-2 border-b border-red-200">Bib</th>
+                                    <th class="px-3 py-2 border-b border-red-200">Name</th>
+                                    <th class="px-3 py-2 border-b border-red-200">Run</th>
+                                    <th class="px-3 py-2 border-b border-red-200">Raw Time</th>
+                                    <th class="px-3 py-2 border-b border-red-200">Error</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-red-100">
+            `;
+
+            errorRows.forEach(row => {
+                const bib = row['Bib #'] || '—';
+                const name = row['Name'] || '—';
+                const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
+                const timeStr = row[COL_TIME] || '—';
+                const time = parseToNumeric(row[COL_TIME]);
+                
+                let reasons = [];
+                if (runNum !== '1' && runNum !== '2') {
+                    reasons.push('Invalid Run Number');
+                }
+                if (time === 0) {
+                    reasons.push('Raw Time is 0');
+                }
+
+                tableHtml += `
+                    <tr class="hover:bg-red-100 transition-colors">
+                        <td class="px-3 py-2 font-bold text-red-900">${bib}</td>
+                        <td class="px-3 py-2 text-red-800 font-semibold">${name}</td>
+                        <td class="px-3 py-2 font-bold text-red-800">${runNum}</td>
+                        <td class="px-3 py-2 text-red-800">${timeStr}</td>
+                        <td class="px-3 py-2 text-red-600 font-bold">${reasons.join(', ')}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
             container.innerHTML = tableHtml;
         }
 
