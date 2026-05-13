@@ -727,8 +727,14 @@
 
             const sortedClasses = Object.keys(groups).sort();
 
-            const allKeys = Object.keys(results[0]);
-            const dynamicKeys = allKeys.filter(key => !EXCLUDE_COLS.includes(key));
+            const dynamicKeys = [
+                'Raw Time',
+                'Total Penalties',
+                'Total Score',
+                'Gates Touched',
+                'Gates Fiftied',
+                'Class Rank'
+            ];
             const colCount = 3 + dynamicKeys.length;
 
             let tableHtml = `
@@ -757,6 +763,15 @@
                         <td colspan="${colCount}" class="px-3 py-1 text-[10px] font-black text-gray-500 uppercase tracking-widest border-y border-gray-200">${cls}</td>
                     </tr>
                 `;
+
+                groups[cls].sort((a, b) => {
+                    const scoreA = parseToNumeric(a['Total Score']);
+                    const scoreB = parseToNumeric(b['Total Score']);
+                    if (scoreA === null && scoreB === null) return 0;
+                    if (scoreA === null) return 1;
+                    if (scoreB === null) return -1;
+                    return scoreA - scoreB;
+                });
 
                 groups[cls].forEach((row) => {
                     const runNum = row['Run #'] || row['Run'] || '1';
