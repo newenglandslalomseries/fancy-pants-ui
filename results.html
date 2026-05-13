@@ -803,12 +803,16 @@
             container.classList.remove('hidden');
 
             let tableHtml = `
-                <div class="bg-red-50 rounded-xl shadow-md border border-red-200 p-6">
-                    <h3 class="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                        Reporting anomalies
-                    </h3>
-                    <div class="overflow-x-auto">
+                <details class="bg-red-50 rounded-xl shadow-md border border-red-200 group">
+                    <summary class="text-lg font-bold text-red-800 p-6 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 flex-shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            <span>Reporting anomalies</span>
+                            <span class="ml-2 bg-red-200 text-red-800 text-xs px-2.5 py-0.5 rounded-full font-bold">${errorRows.length}</span>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 transition-transform duration-200 group-open:rotate-180"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="overflow-x-auto px-6 pb-6 pt-0">
                         <table class="w-full text-sm text-left">
                             <thead class="bg-red-100 text-red-800 uppercase text-[10px] font-bold tracking-wider">
                                 <tr>
@@ -844,7 +848,7 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </details>
             `;
             container.innerHTML = tableHtml;
         }
