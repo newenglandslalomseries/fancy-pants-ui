@@ -150,26 +150,37 @@
             <p id="loadingText" class="text-gray-500 animate-pulse">Processing data...</p>
         </div>
 
+        <!-- Errors Section -->
+        <div id="errorsContainer" class="mb-8 hidden">
+            <!-- Errors table will be injected here -->
+        </div>
+
         <!-- Dashboard Section (Always Visible) -->
         <div id="statsDashboard" class="space-y-4 mb-8">
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                <div class="flex flex-col gap-4 mb-6">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <h3 class="text-lg font-bold text-gray-800" id="distributionTitle">Overall Distribution Overview</h3>
+            <details class="bg-white rounded-xl shadow-md border border-gray-100 group">
+                <summary class="p-6 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full pr-4">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 flex-shrink-0"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                            <h3 class="text-lg font-bold text-gray-800" id="distributionTitle">Overall Distribution Overview</h3>
+                        </div>
 
                         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium">
-                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <label class="flex items-center gap-2 cursor-pointer select-none" onclick="event.stopPropagation()">
                                 <input type="checkbox" id="showTime" checked onchange="updateCharts()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
                                 <span class="text-blue-600">Raw Time</span>
                             </label>
-                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <label class="flex items-center gap-2 cursor-pointer select-none" onclick="event.stopPropagation()">
                                 <input type="checkbox" id="showScore" checked onchange="updateCharts()" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
                                 <span class="text-emerald-600">Total Score</span>
                             </label>
                         </div>
                     </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 transition-transform duration-200 group-open:rotate-180 flex-shrink-0"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </summary>
 
-                    <div id="individualMarkerControls" class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold border-t border-gray-100 pt-3 hidden">
+                <div class="px-6 pb-6 pt-0">
+                    <div id="individualMarkerControls" class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold border-t border-gray-100 pt-3 mb-4 hidden">
                         <span class="text-gray-400 uppercase tracking-wider">Racer Markers:</span>
                         <label class="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" id="showRacerTime" checked onchange="updateCharts()" class="w-4 h-4 text-blue-900 rounded border-gray-300 focus:ring-blue-900">
@@ -180,17 +191,11 @@
                             <span class="text-emerald-900">Show Racer Score</span>
                         </label>
                     </div>
+                    <div class="h-64 w-full">
+                        <canvas id="statsChart"></canvas>
+                    </div>
                 </div>
-
-                <div class="h-64 w-full">
-                    <canvas id="statsChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Errors Section -->
-        <div id="errorsContainer" class="mb-8 hidden">
-            <!-- Errors table will be injected here -->
+            </details>
         </div>
 
         <!-- Results Section (Always Visible below graph) -->
