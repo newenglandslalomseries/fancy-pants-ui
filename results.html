@@ -114,9 +114,15 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
-                    <div class="mt-2 flex items-center gap-2">
-                        <input type="checkbox" id="standingsView" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                        <label for="standingsView" class="text-sm text-gray-600 cursor-pointer">Standings view</label>
+                    <div class="mt-2 flex flex-wrap items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="standingsView" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <label for="standingsView" class="text-sm text-gray-600 cursor-pointer">Standings view</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="randomizeClassOrder" onchange="updateDisplay()" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+                            <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Randomize class order</label>
+                        </div>
                     </div>
                 </div>
 
@@ -741,7 +747,14 @@
                 return acc;
             }, {});
 
-            const sortedClasses = Object.keys(groups).sort();
+            let sortedClasses = Object.keys(groups).sort();
+            const randomize = document.getElementById('randomizeClassOrder') && document.getElementById('randomizeClassOrder').checked;
+            if (randomize) {
+                for (let i = sortedClasses.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [sortedClasses[i], sortedClasses[j]] = [sortedClasses[j], sortedClasses[i]];
+                }
+            }
 
             const dynamicKeys = [
                 'Raw Time',
