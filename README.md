@@ -75,6 +75,7 @@ are
 The steps required to prepare for an upcoming race are:
 
 * In advance, prepare the race results spreadsheet.
+  * Delete all data from the Fancy Pants Results UI Google Form.
   * Update the Fancy Pants Results UI Google Form to link to the
     spreadsheet.
   * Update the formulas on the Raw Results sheet of the spreadsheet to read from
@@ -83,8 +84,6 @@ The steps required to prepare for an upcoming race are:
   making sure the upcoming race is listed first in the file.
 * Once the course is set up, edit the current_race.json file to
   reflect the race name and gate to station assignments.
-
-Details for each of these steps are below.
 
 # Scoring app
 
