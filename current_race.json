@@ -1,10 +1,10 @@
 {
-  "race_name": "Kenduskeag 2026",
+  "race_name": "Covered Bridge 2026",
   "stations": [
-    { "name": "Station A", "max_gate": 4 },
-    { "name": "Station B", "max_gate": 9 },
-    { "name": "Station C", "max_gate": 14 },
-    { "name": "Station D", "max_gate": 19 },
+    { "name": "Station A", "max_gate": 6 },
+    { "name": "Station B", "max_gate": 12 },
+    { "name": "Station C", "max_gate": 17 },
+    { "name": "Station D", "max_gate": 22 },
     { "name": "Finish", "is_finish": true }
   ]
 }
