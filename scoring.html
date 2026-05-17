@@ -603,7 +603,7 @@
     <!-- Confirmation Modal -->
     <div id="confirmation-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-lg w-full">
-            <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Confirm Submission</h2>
+
             <div id="confirmation-summary" class="mb-6 space-y-2 text-gray-700 dark:text-gray-300">
                 <!-- Summary will be populated here -->
             </div>
@@ -916,15 +916,15 @@
                 let summaryHtml = '';
 
                 // Add Station
-                summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Station:</strong> ${stationSelector.value}</p>`;
+                summaryHtml += `<p class="text-center text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">${stationSelector.value}</p>`;
 
                 // Add Bib
-                summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Bib Number:</strong> ${bibInput.value}</p>`;
+                summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
 
                 // Add Gates (if any are visible)
                 const gatesToShow = stationGateMap[stationSelector.value] || [];
                 if (gatesToShow.length > 0) {
-                    summaryHtml += '<h4 class="font-semibold text-gray-800 dark:text-gray-100 mt-2">Gates:</h4><ul class="list-disc list-inside pl-4">';
+                    summaryHtml += '<ul class="list-none space-y-2 mt-4 text-2xl">';
                     gatesToShow.forEach(gateNum => {
                         const gateRow = document.getElementById(`gate-${gateNum}`);
                         if (!gateRow) return;
@@ -947,7 +947,7 @@
 
                 // Add Time (if visible)
                 if (!timeInput.disabled) {
-                    summaryHtml += `<p class="mt-2"><strong class="font-semibold text-gray-800 dark:text-gray-100">Time:</strong> ${timeInput.value}</p>`;
+                    summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> ${timeInput.value}</p>`;
                 }
 
                 confirmationSummary.innerHTML = summaryHtml;
@@ -969,9 +969,9 @@
                 // Build Confirmation Summary
                 confirmationSummary.innerHTML = '';
                 let summaryHtml = '';
-                summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Station:</strong> ${stationSelector.value}</p>`;
-                summaryHtml += `<p><strong class="font-semibold text-gray-800 dark:text-gray-100">Bib Number:</strong> ${bibInput.value}</p>`;
-                summaryHtml += `<p class="mt-2"><strong class="font-semibold text-gray-800 dark:text-gray-100">Time:</strong> <span class="font-bold text-red-600">DNF (999.0)</span></p>`;
+                summaryHtml += `<p class="text-center text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">${stationSelector.value}</p>`;
+                summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
+                summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> <span class="font-bold text-red-600">DNF (999.0)</span></p>`;
                 
                 confirmationSummary.innerHTML = summaryHtml;
                 currentSubmissionIsDNF = true;
