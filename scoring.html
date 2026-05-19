@@ -596,7 +596,27 @@
                 <button type="submit" id="submit-btn" class="btn w-full bg-blue-600 text-white p-4 rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
                     Submit
                 </button>
+                
+                <!-- View Submissions Button -->
+                <button type="button" id="view-submissions-btn" class="btn w-full mt-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg text-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+                    View Recent Submissions
+                </button>
             </form>
+        </div>
+    </div>
+
+    <!-- Recent Submissions Modal -->
+    <div id="recent-submissions-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-lg w-full max-h-[80vh] flex flex-col">
+            <h2 class="text-2xl font-bold mb-4 text-center border-b border-gray-200 dark:border-gray-700 pb-2">Recent Submissions</h2>
+            <div id="recent-submissions-list" class="overflow-y-auto flex-1 space-y-3 mb-4 text-gray-700 dark:text-gray-300">
+                <!-- Submissions will be populated here -->
+            </div>
+            <div class="flex justify-end">
+                <button id="close-submissions-btn" class="btn bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-5 py-2 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
 
@@ -641,6 +661,11 @@
             const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
             const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
 
+            const viewSubmissionsBtn = document.getElementById('view-submissions-btn');
+            const recentSubmissionsModal = document.getElementById('recent-submissions-modal');
+            const recentSubmissionsList = document.getElementById('recent-submissions-list');
+            const closeSubmissionsBtn = document.getElementById('close-submissions-btn');
+
             // Read URL parameters
             const urlParams = new URLSearchParams(window.location.search);
 
@@ -659,6 +684,8 @@
             let stationGateMap = {};
             let isFinishStation = {};
             let currentSubmissionIsDNF = false;
+            let recentSubmissions = []; // Array to store recent submissions
+            let pendingSubmissionData = null; // Temporarily store submission data before confirm
 
             /**
              * Fetches and parses the race metadata from a local JSON file.
@@ -921,6 +948,7 @@
                 // Add Bib
                 summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
 
+                let gatesData = [];
                 // Add Gates (if any are visible)
                 const gatesToShow = stationGateMap[stationSelector.value] || [];
                 if (gatesToShow.length > 0) {
@@ -938,6 +966,7 @@
                         }
                         if (selectedValue !== 'Clean') {
                             summaryHtml += `<li><strong>Gate ${gateNum}:</strong> <span class="font-bold ${selectedValue === 'Touch' ? 'text-yellow-500' : 'text-red-500'}">${selectedValue}</span></li>`;
+                            gatesData.push({ gate: gateNum, value: selectedValue });
                         } else {
                             summaryHtml += `<li>Gate ${gateNum}: ${selectedValue}</li>`;
                         }
@@ -949,6 +978,14 @@
                 if (!timeInput.disabled) {
                     summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> ${timeInput.value}</p>`;
                 }
+
+                pendingSubmissionData = {
+                    station: stationSelector.value,
+                    bib: bibInput.value,
+                    gates: gatesData,
+                    time: !timeInput.disabled ? timeInput.value : null,
+                    isDNF: false
+                };
 
                 confirmationSummary.innerHTML = summaryHtml;
                 confirmationModal.classList.remove('hidden');
@@ -973,6 +1010,14 @@
                 summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
                 summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> <span class="font-bold text-red-600">DNF (999.0)</span></p>`;
                 
+                pendingSubmissionData = {
+                    station: stationSelector.value,
+                    bib: bibInput.value,
+                    gates: [],
+                    time: 'DNF',
+                    isDNF: true
+                };
+
                 confirmationSummary.innerHTML = summaryHtml;
                 currentSubmissionIsDNF = true;
                 confirmationModal.classList.remove('hidden');
@@ -1021,6 +1066,19 @@
                     statusMessage.textContent = 'Success! Entry recorded.';
                     statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
 
+                    // Save to recent submissions
+                    if (pendingSubmissionData) {
+                        recentSubmissions.unshift({
+                            data: pendingSubmissionData,
+                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                        });
+                        
+                        // Keep only the last 20 submissions
+                        if (recentSubmissions.length > 20) {
+                            recentSubmissions.pop();
+                        }
+                    }
+
                     // Reset the form, but keep the station
                     form.reset();
                     stationSelector.value = selectedStation; // Restore station
@@ -1041,6 +1099,48 @@
                         statusMessage.classList.add('hidden');
                     }, 3000);
                 }
+            });
+
+            // Handle Recent Submissions Modal
+            viewSubmissionsBtn.addEventListener('click', () => {
+                recentSubmissionsList.innerHTML = '';
+                if (recentSubmissions.length === 0) {
+                    recentSubmissionsList.innerHTML = '<p class="text-center italic mt-4">No recent submissions.</p>';
+                } else {
+                    recentSubmissions.forEach((sub) => {
+                        let contentHtml = `
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-lg">${sub.data.station}</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">${sub.timestamp}</span>
+                            </div>
+                            <div class="mb-1"><strong>Bib:</strong> ${sub.data.bib}</div>
+                        `;
+                        
+                        if (sub.data.gates && sub.data.gates.length > 0) {
+                            contentHtml += `<div class="mb-1"><strong>Penalties:</strong> `;
+                            let penalties = sub.data.gates.map(g => `<span class="${g.value === 'Touch' ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-500'} font-medium">G${g.gate} (${g.value})</span>`);
+                            contentHtml += penalties.join(', ') + `</div>`;
+                        } else if (!sub.data.isDNF && !isFinishStation[sub.data.station] && stationGateMap[sub.data.station] && stationGateMap[sub.data.station].length > 0) {
+                            contentHtml += `<div class="mb-1 text-green-600 dark:text-green-400 font-medium">All Gates Clean</div>`;
+                        }
+
+                        if (sub.data.time) {
+                            contentHtml += `<div class="mb-1"><strong>Time:</strong> <span class="${sub.data.isDNF ? 'text-red-600 dark:text-red-500 font-bold' : ''}">${sub.data.time}</span></div>`;
+                        }
+
+                        const itemHtml = `
+                            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                                ${contentHtml}
+                            </div>
+                        `;
+                        recentSubmissionsList.innerHTML += itemHtml;
+                    });
+                }
+                recentSubmissionsModal.classList.remove('hidden');
+            });
+
+            closeSubmissionsBtn.addEventListener('click', () => {
+                recentSubmissionsModal.classList.add('hidden');
             });
 
             // Start the application
