@@ -225,6 +225,7 @@
 
     <footer class="text-center text-xs text-gray-400 pb-8 mt-auto px-4">
         <p id="sourceInfo" class="truncate">Source: ...</p>
+        <p id="dataSizeInfo" class="truncate mt-1"></p>
     </footer>
 
     <script>
@@ -411,6 +412,7 @@
             const emptyState = document.getElementById('emptyState');
             const statusMessage = document.getElementById('statusMessage');
             const errorsContainer = document.getElementById('errorsContainer');
+            const dataSizeInfo = document.getElementById('dataSizeInfo');
 
             bibSelect.disabled = true;
             classSelect.disabled = true;
@@ -418,6 +420,7 @@
             emptyState.classList.add('hidden');
             statusMessage.classList.add('hidden'); // Clear previous error messages
             if (errorsContainer) errorsContainer.classList.add('hidden');
+            if (dataSizeInfo) dataSizeInfo.innerText = '';
 
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&t=${new Date().getTime()}`;
@@ -425,6 +428,12 @@
                 if (!response.ok) throw new Error('Failed to fetch spreadsheet.');
 
                 const csvText = await response.text();
+
+                if (dataSizeInfo) {
+                    const byteSize = new Blob([csvText]).size;
+                    dataSizeInfo.innerText = `Data retrieved: ${formatBytes(byteSize)}`;
+                }
+
                 const { headers, rows } = parseCSV(csvText);
 
                 if (!headers.includes(COL_BIB)) {
@@ -629,6 +638,15 @@
             }
             const num = parseFloat(val);
             return isNaN(num) ? null : num;
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
         }
 
         function updateCharts() {
