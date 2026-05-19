@@ -467,7 +467,7 @@
             const previousValue = classSelect.value;
             const classes = [...new Set(rows.map(r => r[COL_CLASS]).filter(Boolean))].sort();
 
-            classSelect.innerHTML = '<option value="">All Classes</option>';
+            classSelect.innerHTML = '<option value="">All Classes</option><option value="*COMBINE*">Combine all classes</option>';
             classes.forEach(cls => {
                 const option = document.createElement('option');
                 option.value = cls;
@@ -475,7 +475,7 @@
                 classSelect.appendChild(option);
             });
 
-            if (classes.includes(previousValue)) {
+            if (classes.includes(previousValue) || previousValue === '*COMBINE*') {
                 classSelect.value = previousValue;
             }
         }
@@ -485,7 +485,7 @@
             const bibSelect = document.getElementById('bibSelect');
             const currentRacerName = bibSelect.value;
 
-            const filteredRows = selectedClass
+            const filteredRows = (selectedClass && selectedClass !== '*COMBINE*')
                 ? allData.filter(r => r[COL_CLASS] === selectedClass)
                 : allData;
 
@@ -502,7 +502,7 @@
 
             updateDisplay();
 
-            document.getElementById('distributionTitle').textContent = selectedClass
+            document.getElementById('distributionTitle').textContent = (selectedClass && selectedClass !== '*COMBINE*')
                 ? `Distribution: ${selectedClass}`
                 : 'Overall Distribution Overview';
         }
@@ -512,7 +512,7 @@
             const previousValue = select.value;
             const selectedClass = document.getElementById('classSelect').value;
 
-            select.innerHTML = selectedClass
+            select.innerHTML = (selectedClass && selectedClass !== '*COMBINE*')
                 ? `<option value="">All racers in ${selectedClass}</option>`
                 : '<option value="">All racers</option>';
 
@@ -600,7 +600,7 @@
             };
 
             const classFilter = (row) => {
-                if (!classValue) return true;
+                if (!classValue || classValue === '*COMBINE*') return true;
                 return row[COL_CLASS] === classValue;
             };
 
@@ -641,7 +641,7 @@
             const showRacerTime = document.getElementById('showRacerTime').checked;
             const showRacerScore = document.getElementById('showRacerScore').checked;
 
-            const dataToChart = selectedClass
+            const dataToChart = (selectedClass && selectedClass !== '*COMBINE*')
                 ? allData.filter(r => r[COL_CLASS] === selectedClass)
                 : allData;
 
@@ -676,7 +676,7 @@
                 const showTandem = !document.getElementById('tandemCheckboxGroup').classList.contains('hidden') && document.getElementById('showTandem').checked;
                 const racerFilter = (row) => showTandem ? (row[COL_NAME] && row[COL_NAME].includes(nameValue)) : row[COL_NAME] === nameValue;
                 
-                const racerRuns = selectedClass
+                const racerRuns = (selectedClass && selectedClass !== '*COMBINE*')
                     ? allData.filter(row => row[COL_CLASS] === selectedClass && racerFilter(row))
                     : allData.filter(racerFilter);
 
@@ -740,8 +740,10 @@
                 return;
             }
 
+            const isCombined = document.getElementById('classSelect') && document.getElementById('classSelect').value === '*COMBINE*';
+
             const groups = results.reduce((acc, row) => {
-                const cls = row[COL_CLASS] || 'Unclassified';
+                const cls = isCombined ? 'All Racers' : (row[COL_CLASS] || 'Unclassified');
                 if (!acc[cls]) acc[cls] = [];
                 acc[cls].push(row);
                 return acc;
@@ -764,7 +766,7 @@
                 'Gates Fiftied',
                 'Class Rank'
             ];
-            const colCount = 3 + dynamicKeys.length;
+            const colCount = 3 + dynamicKeys.length + (isCombined ? 1 : 0);
 
             let tableHtml = `
                 <div class="md:hidden text-center mb-1 animate-pulse">
@@ -777,6 +779,7 @@
                                 <tr>
                                     <th class="px-3 py-2 border-b border-gray-100">Bib</th>
                                     <th class="px-3 py-2 border-b border-gray-100">Name</th>
+                                    ${isCombined ? '<th class="px-3 py-2 border-b border-gray-100">Class</th>' : ''}
                                     <th class="px-3 py-2 border-b border-gray-100">Run</th>
                                     ${dynamicKeys.map(key => `
                                         <th class="px-3 py-2 border-b border-gray-100 whitespace-nowrap">${HEADER_MAP[key] || key}</th>
@@ -787,11 +790,13 @@
             `;
 
             sortedClasses.forEach(cls => {
-                tableHtml += `
-                    <tr class="bg-gray-100">
-                        <td colspan="${colCount}" class="px-3 py-1 text-[10px] font-black text-gray-500 uppercase tracking-widest border-y border-gray-200">${cls}</td>
-                    </tr>
-                `;
+                if (!isCombined) {
+                    tableHtml += `
+                        <tr class="bg-gray-100">
+                            <td colspan="${colCount}" class="px-3 py-1 text-[10px] font-black text-gray-500 uppercase tracking-widest border-y border-gray-200">${cls}</td>
+                        </tr>
+                    `;
+                }
 
                 groups[cls].sort((a, b) => {
                     const scoreA = parseToNumeric(a['Total Score']);
@@ -806,11 +811,13 @@
                     const runNum = row['Run #'] || row['Run'] || '1';
                     const bib = row['Bib #'] || '—';
                     const name = row['Name'] || '—';
+                    const rowClass = row[COL_CLASS] || '—';
 
                     tableHtml += `
                         <tr class="hover:bg-blue-50 transition-colors">
                             <td class="px-3 py-2 font-bold text-gray-900">${bib}</td>
                             <td class="px-3 py-2 text-gray-700 font-semibold truncate max-w-[120px] whitespace-nowrap">${name}</td>
+                            ${isCombined ? `<td class="px-3 py-2 text-gray-600 font-medium whitespace-nowrap">${rowClass}</td>` : ''}
                             <td class="px-3 py-2 font-bold text-blue-600">#${runNum}</td>
                             ${dynamicKeys.map(key => {
                                 let val = row[key] || '—';
