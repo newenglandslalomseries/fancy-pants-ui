@@ -584,6 +584,20 @@
             }
         }
 
+        function filterByName(name) {
+            document.getElementById('classSelect').value = '';
+            document.getElementById('bibSelect').value = name;
+            handleSelectionChange();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function filterByClass(cls) {
+            document.getElementById('bibSelect').value = '';
+            document.getElementById('classSelect').value = cls;
+            handleClassChange();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         function updateDisplay() {
             const nameValue = document.getElementById('bibSelect').value;
             const classValue = document.getElementById('classSelect').value;
@@ -809,9 +823,10 @@
 
             sortedClasses.forEach(cls => {
                 if (!isCombined) {
+                    const safeCls = cls.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     tableHtml += `
-                        <tr class="bg-gray-100">
-                            <td colspan="${colCount}" class="px-3 py-1 text-[10px] font-black text-gray-500 uppercase tracking-widest border-y border-gray-200">${cls}</td>
+                        <tr class="bg-gray-100 group cursor-pointer hover:bg-gray-200 transition-colors" onclick="filterByClass('${safeCls}')" title="Filter to this class">
+                            <td colspan="${colCount}" class="px-3 py-1 text-[10px] font-black text-gray-500 uppercase tracking-widest border-y border-gray-200 group-hover:text-blue-600">${cls}</td>
                         </tr>
                     `;
                 }
@@ -830,12 +845,14 @@
                     const bib = row['Bib #'] || '—';
                     const name = row['Name'] || '—';
                     const rowClass = row[COL_CLASS] || '—';
+                    const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    const safeRowClass = rowClass.replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
                     tableHtml += `
                         <tr class="hover:bg-blue-50 transition-colors">
                             <td class="px-3 py-2 font-bold text-gray-900">${bib}</td>
-                            <td class="px-3 py-2 text-gray-700 font-semibold truncate max-w-[120px] whitespace-nowrap">${name}</td>
-                            ${isCombined ? `<td class="px-3 py-2 text-gray-600 font-medium whitespace-nowrap">${rowClass}</td>` : ''}
+                            <td class="px-3 py-2 text-gray-700 font-semibold truncate max-w-[120px] whitespace-nowrap cursor-pointer hover:text-blue-600 underline decoration-transparent hover:decoration-blue-600 transition-colors" onclick="filterByName('${safeName}')" title="Filter to this racer">${name}</td>
+                            ${isCombined ? `<td class="px-3 py-2 text-gray-600 font-medium whitespace-nowrap cursor-pointer hover:text-blue-600 underline decoration-transparent hover:decoration-blue-600 transition-colors" onclick="filterByClass('${safeRowClass}')" title="Filter to this class">${rowClass}</td>` : ''}
                             <td class="px-3 py-2 font-bold text-blue-600">#${runNum}</td>
                             ${dynamicKeys.map(key => {
                                 let val = row[key] || '—';
