@@ -622,12 +622,12 @@
 
     <!-- Confirmation Modal -->
     <div id="confirmation-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-lg w-full">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-lg w-full max-h-[80vh] flex flex-col">
 
-            <div id="confirmation-summary" class="mb-6 space-y-2 text-gray-700 dark:text-gray-300">
+            <div id="confirmation-summary" class="overflow-y-auto flex-1 mb-6 space-y-2 text-gray-700 dark:text-gray-300 pr-1">
                 <!-- Summary will be populated here -->
             </div>
-            <div class="flex justify-end space-x-3">
+            <div class="flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <button id="cancel-submit-btn" class="btn bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-5 py-2 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400">
                     Cancel
                 </button>
