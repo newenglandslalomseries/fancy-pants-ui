@@ -1,10 +1,6 @@
 {
-  "race_name": "Covered Bridge 2026",
+  "race_name": "Blackwater 2026",
   "stations": [
-    { "name": "Station A", "max_gate": 6 },
-    { "name": "Station B", "max_gate": 12 },
-    { "name": "Station C", "max_gate": 17 },
-    { "name": "Station D", "max_gate": 22 },
-    { "name": "Finish", "is_finish": true }
+    { "name": "Finish", "max_gate": 21, "is_finish": true }
   ]
 }
