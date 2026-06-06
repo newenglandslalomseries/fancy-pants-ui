@@ -1,39 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paddling Race Session Optimizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
     </style>
 </head>
+
 <body class="bg-gray-50 min-h-screen text-gray-800 p-6">
 
     <div class="max-w-6xl mx-auto space-y-6">
         <header class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h1 class="text-2xl font-bold text-gray-900 mb-2">Race Session Optimizer</h1>
-            <p class="text-gray-600">Paste your CSV registration data below. The tool will minimize the number of racers participating in both Session A and Session B, while keeping the total number of boats balanced.</p>
-            <p class="text-sm text-gray-500 mt-2">Required columns: <code class="bg-gray-100 px-1 py-0.5 rounded">Name</code>, <code class="bg-gray-100 px-1 py-0.5 rounded">Race Classes</code>, and <code class="bg-gray-100 px-1 py-0.5 rounded">Tandem Boat Partner(s)</code>.</p>
+            <p class="text-gray-600">Paste your tab-separated registration data below. The tool will minimize the number
+                of racers participating in both Session A and Session B, while keeping the total number of boats
+                balanced.</p>
+            <p class="text-sm text-gray-500 mt-2">Required columns: <code
+                    class="bg-gray-100 px-1 py-0.5 rounded">Name</code>, <code
+                    class="bg-gray-100 px-1 py-0.5 rounded">Race Classes</code>, and <code
+                    class="bg-gray-100 px-1 py-0.5 rounded">Tandem Boat Partner(s)</code>.</p>
         </header>
 
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <textarea id="csvInput" rows="10" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y" placeholder="Name,Race Classes,Tandem Boat Partner(s)
-Alice,Solo 1 & Tandem 2 & Solo 3,Bob
-Bob,Tandem 2,
-Charlie,Solo 1 & Solo 3,
+            <textarea id="csvInput" rows="10"
+                class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y"
+                placeholder="Name&#9;Race Classes&#9;Tandem Boat Partner(s)
+Alice&#9;Solo 1, Tandem 2, Solo 3&#9;Bob
+Bob&#9;Tandem 2&#9;
+Charlie&#9;Solo 1, Solo 3&#9;
 ..."></textarea>
 
             <div class="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
-                    <label for="maxDiff" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Max Boat Difference:</label>
-                    <input type="number" id="maxDiff" value="5" min="0" class="w-20 p-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm text-center">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
+                        <label for="maxDiff" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Max Boat
+                            Difference:</label>
+                        <input type="number" id="maxDiff" value="5" min="0"
+                            class="w-20 p-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm text-center">
+                    </div>
+
+                    <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
+                        <label for="missingBibs" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Missing Bibs:</label>
+                        <input type="text" id="missingBibs" placeholder="e.g. 5, 12, 15-20"
+                            class="w-48 p-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
                 </div>
 
                 <div class="flex items-center space-x-4">
                     <div id="status" class="text-sm font-medium text-gray-500"></div>
-                    <button onclick="processData()" class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <button onclick="processData()"
+                        class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         Optimize Sessions
                     </button>
                 </div>
@@ -46,7 +68,8 @@ Charlie,Solo 1 & Solo 3,
                 <h2 class="text-lg font-semibold text-blue-900">Optimization Result</h2>
                 <div class="mt-2 text-4xl font-bold text-blue-600" id="overlapCount">0</div>
                 <div class="text-blue-800 mt-1 font-medium">Racers in Both Sessions</div>
-                <div id="constraintWarning" class="hidden mt-3 inline-block bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full font-medium border border-yellow-200">
+                <div id="constraintWarning"
+                    class="hidden mt-3 inline-block bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full font-medium border border-yellow-200">
                     Warning: Impossible to meet boat difference constraint. Showing closest possible balance.
                 </div>
             </div>
@@ -54,7 +77,11 @@ Charlie,Solo 1 & Solo 3,
             <!-- Overlapping Racers List -->
             <div id="overlapRacersContainer" class="hidden bg-white p-6 rounded-xl shadow-sm border border-red-100">
                 <h3 class="text-lg font-semibold text-red-800 mb-3 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                        </path>
+                    </svg>
                     Affected Racers (Both Sessions)
                 </h3>
                 <ul id="overlapRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
@@ -76,7 +103,8 @@ Charlie,Solo 1 & Solo 3,
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold">Sessions Breakdown</h3>
-                    <div class="text-sm text-gray-300">Select and copy the table below to paste into a spreadsheet.</div>
+                    <div class="text-sm text-gray-300">Select and copy the table below to paste into a spreadsheet.
+                    </div>
                 </div>
                 <div class="p-0 overflow-x-auto">
                     <div id="spreadsheetTableContainer"></div>
@@ -86,14 +114,14 @@ Charlie,Solo 1 & Solo 3,
     </div>
 
     <script>
-        // --- 1. Basic CSV Parser ---
-        function parseCSV(text) {
+        // --- 1. Basic TSV Parser ---
+        function parseTSV(text) {
             let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
             for (l of text) {
                 if ('"' === l) {
                     if (s && l === p) row[i] += l;
                     s = !s;
-                } else if (',' === l && s) l = row[++i] = '';
+                } else if ('\t' === l && s) l = row[++i] = '';
                 else if ('\n' === l && s) {
                     if ('\r' === p) row[i] = row[i].slice(0, -1);
                     row = ret[++r] = [l = '']; i = 0;
@@ -108,20 +136,20 @@ Charlie,Solo 1 & Solo 3,
         function runSimulatedAnnealing(N_CLASSES, racerClassArray, classBoatArray, maxDiff, timeLimitMs = 500) {
             function evaluate(state) {
                 let boatsA = 0, boatsB = 0;
-                for(let i=0; i<N_CLASSES; i++) {
-                    if(state[i]) boatsA += classBoatArray[i];
+                for (let i = 0; i < N_CLASSES; i++) {
+                    if (state[i]) boatsA += classBoatArray[i];
                     else boatsB += classBoatArray[i];
                 }
                 let diff = Math.abs(boatsA - boatsB);
 
                 let overlap = 0;
-                for(let i=0; i<racerClassArray.length; i++) {
+                for (let i = 0; i < racerClassArray.length; i++) {
                     let hasA = false, hasB = false;
-                    for(let j=0; j<racerClassArray[i].length; j++) {
-                        if(state[racerClassArray[i][j]]) hasA = true;
+                    for (let j = 0; j < racerClassArray[i].length; j++) {
+                        if (state[racerClassArray[i][j]]) hasA = true;
                         else hasB = true;
                     }
-                    if(hasA && hasB) overlap++;
+                    if (hasA && hasB) overlap++;
                 }
 
                 let valid = diff <= maxDiff;
@@ -129,7 +157,7 @@ Charlie,Solo 1 & Solo 3,
                 let cost = overlap * 10000 + diff;
 
                 // Heavy penalty for invalid states (violating boat diff constraint)
-                if(!valid) {
+                if (!valid) {
                     cost += 10000000 + diff * 100000;
                 }
                 return { cost, overlap, diff, boatsA, boatsB, valid };
@@ -142,16 +170,16 @@ Charlie,Solo 1 & Solo 3,
             // Run until time budget expires to guarantee responsive UI with max search space exploration
             while (performance.now() - startTime < timeLimitMs) {
                 // Random initial state
-                let state = Array.from({length: N_CLASSES}, () => Math.random() > 0.5);
+                let state = Array.from({ length: N_CLASSES }, () => Math.random() > 0.5);
                 let currentEval = evaluate(state);
 
                 let temp = 100.0;
                 const minTemp = 0.001;
                 const alpha = 0.95; // Fast cooling to allow many restarts
 
-                while(temp > minTemp && performance.now() - startTime < timeLimitMs) {
+                while (temp > minTemp && performance.now() - startTime < timeLimitMs) {
                     // Batch inner iterations to avoid constant time-checking overhead
-                    for(let i=0; i<500; i++) {
+                    for (let i = 0; i < 500; i++) {
                         let flip1 = Math.floor(Math.random() * N_CLASSES);
                         let flip2 = -1;
 
@@ -159,11 +187,11 @@ Charlie,Solo 1 & Solo 3,
                         if (Math.random() < 0.5 && N_CLASSES > 1) {
                             flip2 = Math.floor(Math.random() * N_CLASSES);
                             let attempts = 0;
-                            while(state[flip1] === state[flip2] && attempts < 5) {
+                            while (state[flip1] === state[flip2] && attempts < 5) {
                                 flip2 = Math.floor(Math.random() * N_CLASSES);
                                 attempts++;
                             }
-                            if(state[flip1] === state[flip2]) flip2 = -1; // Fallback to 1 flip if can't find opposites easily
+                            if (state[flip1] === state[flip2]) flip2 = -1; // Fallback to 1 flip if can't find opposites easily
                         }
 
                         // Apply neighbor transition
@@ -199,7 +227,7 @@ Charlie,Solo 1 & Solo 3,
             const maxDiff = isNaN(maxDiffInput) ? 5 : Math.max(0, maxDiffInput);
 
             if (!csvText) {
-                alert("Please paste CSV data first.");
+                alert("Please paste registration data first.");
                 return;
             }
 
@@ -207,8 +235,8 @@ Charlie,Solo 1 & Solo 3,
 
             setTimeout(() => {
                 try {
-                    let lines = parseCSV(csvText);
-                    if (lines.length < 2) throw new Error("CSV has no data rows.");
+                    let lines = parseTSV(csvText);
+                    if (lines.length < 2) throw new Error("Registration data has no data rows.");
 
                     let header = lines[0].map(h => (h || '').toLowerCase().trim());
                     let nameIdx = header.findIndex(h => h.includes('name'));
@@ -238,8 +266,8 @@ Charlie,Solo 1 & Solo 3,
                             originalNames.set(normName, name);
                         }
 
-                        let classesList = (row[classesIdx] || "").split('&').map(s => s.trim()).filter(s => s);
-                        let partnersList = (row[partnersIdx] || "").split('&').map(s => s.trim()).filter(s => s);
+                        let classesList = (row[classesIdx] || "").split(',').map(s => s.trim()).filter(s => s);
+                        let partnersList = (row[partnersIdx] || "").split(',').map(s => s.trim()).filter(s => s);
 
                         let pIdx = 0;
                         let partnerMap = {}; // cls -> normPartner
@@ -366,6 +394,39 @@ Charlie,Solo 1 & Solo 3,
             }, 50);
         }
 
+        function getMissingBibs() {
+            const val = document.getElementById('missingBibs').value;
+            const missing = new Set();
+            if (!val) return missing;
+
+            const tokens = val.split(/[,\s]+/);
+            for (let token of tokens) {
+                token = token.trim();
+                if (!token) continue;
+
+                if (token.includes('-')) {
+                    const parts = token.split('-');
+                    if (parts.length === 2) {
+                        const start = parseInt(parts[0], 10);
+                        const end = parseInt(parts[1], 10);
+                        if (!isNaN(start) && !isNaN(end)) {
+                            const low = Math.min(start, end);
+                            const high = Math.max(start, end);
+                            for (let n = low; n <= high; n++) {
+                                missing.add(n);
+                            }
+                        }
+                    }
+                } else {
+                    const num = parseInt(token, 10);
+                    if (!isNaN(num)) {
+                        missing.add(num);
+                    }
+                }
+            }
+            return missing;
+        }
+
         function renderResults(sessionA, sessionB, overlaps, onlyA, onlyB, evalResult, classBoaters) {
             document.getElementById('results').classList.remove('hidden');
 
@@ -397,15 +458,21 @@ Charlie,Solo 1 & Solo 3,
             }
 
             // Build columns for the spreadsheet table
-            let currentBib = 1;
+            const missingSet = getMissingBibs();
+            let nextBib = 1;
+            function getNextBib() {
+                while (missingSet.has(nextBib)) {
+                    nextBib++;
+                }
+                return nextBib++;
+            }
 
             let colA = [];
             sessionA.sort().forEach((cls) => {
                 colA.push({ type: 'empty' }); // Blank line before each class name
                 colA.push({ type: 'class', name: cls });
                 classBoaters[cls].sort().forEach(b => {
-                    colA.push({ type: 'boat', bib: currentBib, name: b });
-                    currentBib++;
+                    colA.push({ type: 'boat', bib: getNextBib(), name: b });
                 });
             });
 
@@ -414,8 +481,7 @@ Charlie,Solo 1 & Solo 3,
                 colB.push({ type: 'empty' }); // Blank line before each class name
                 colB.push({ type: 'class', name: cls });
                 classBoaters[cls].sort().forEach(b => {
-                    colB.push({ type: 'boat', bib: currentBib, name: b });
-                    currentBib++;
+                    colB.push({ type: 'boat', bib: getNextBib(), name: b });
                 });
             });
 
@@ -437,7 +503,7 @@ Charlie,Solo 1 & Solo 3,
                     <tbody class="text-sm text-gray-800">
             `;
 
-            for(let i=0; i<maxRows; i++) {
+            for (let i = 0; i < maxRows; i++) {
                 let itemA = colA[i] || { type: 'empty' };
                 let itemB = colB[i] || { type: 'empty' };
 
@@ -478,4 +544,5 @@ Charlie,Solo 1 & Solo 3,
         }
     </script>
 </body>
+
 </html>
