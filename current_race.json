@@ -1,6 +1,10 @@
 {
   "race_name": "Blackwater 2026",
   "stations": [
-    { "name": "Finish", "max_gate": 21, "is_finish": true }
+    { "name": "Station A", "max_gate": 6 },
+    { "name": "Station B", "max_gate": 11 },
+    { "name": "Station C", "max_gate": 15 },
+    { "name": "Station D", "max_gate": 20 },
+    { "name": "Finish", "is_finish": true }
   ]
 }
