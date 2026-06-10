@@ -101,10 +101,14 @@ Charlie&#9;Solo 1, Solo 3&#9;
 
             <!-- Sessions Breakdown (Spreadsheet Friendly) -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold">Sessions Breakdown</h3>
-                    <div class="text-sm text-gray-300">Select and copy the table below to paste into a spreadsheet.
+                <div class="bg-gray-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold">Sessions Breakdown</h3>
+                        <div class="text-sm text-gray-300">Select and copy the table below, or click "Copy registration data" to paste directly.</div>
                     </div>
+                    <button onclick="copyRegistrationData(this)" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
+                        Copy registration data
+                    </button>
                 </div>
                 <div class="p-0 overflow-x-auto">
                     <div id="spreadsheetTableContainer"></div>
@@ -467,12 +471,16 @@ Charlie&#9;Solo 1, Solo 3&#9;
                 return nextBib++;
             }
 
+            let tsvRows = ["Class\tBib#\tWork Assignment\t\tName\tSession"];
+
             let colA = [];
             sessionA.sort().forEach((cls) => {
                 colA.push({ type: 'empty' }); // Blank line before each class name
                 colA.push({ type: 'class', name: cls });
                 classBoaters[cls].sort().forEach(b => {
-                    colA.push({ type: 'boat', bib: getNextBib(), name: b });
+                    let bib = getNextBib();
+                    colA.push({ type: 'boat', bib: bib, name: b });
+                    tsvRows.push(`${cls}\t${bib}\t\t\t${b}\tSession A`);
                 });
             });
 
@@ -481,9 +489,13 @@ Charlie&#9;Solo 1, Solo 3&#9;
                 colB.push({ type: 'empty' }); // Blank line before each class name
                 colB.push({ type: 'class', name: cls });
                 classBoaters[cls].sort().forEach(b => {
-                    colB.push({ type: 'boat', bib: getNextBib(), name: b });
+                    let bib = getNextBib();
+                    colB.push({ type: 'boat', bib: bib, name: b });
+                    tsvRows.push(`${cls}\t${bib}\t\t\t${b}\tSession B`);
                 });
             });
+
+            window.lastGeneratedRegistrationTSV = tsvRows.join('\n');
 
             let maxRows = Math.max(colA.length, colB.length);
             let tableHTML = `
@@ -541,6 +553,26 @@ Charlie&#9;Solo 1, Solo 3&#9;
             tableHTML += `</tbody></table>`;
 
             document.getElementById('spreadsheetTableContainer').innerHTML = tableHTML;
+        }
+
+        function copyRegistrationData(button) {
+            if (!window.lastGeneratedRegistrationTSV) {
+                alert("No registration data generated yet. Please optimize sessions first.");
+                return;
+            }
+            navigator.clipboard.writeText(window.lastGeneratedRegistrationTSV).then(() => {
+                const originalText = button.textContent;
+                button.textContent = "Copied!";
+                button.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+                button.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                    button.classList.add('bg-blue-600', 'hover:bg-blue-500');
+                }, 2000);
+            }).catch(err => {
+                alert("Failed to copy data: " + err);
+            });
         }
     </script>
 </body>
