@@ -41,6 +41,25 @@
             border-left-color: #3b82f6;
             animation: spin 1s linear infinite;
         }
+
+        @media print {
+            .work-assignment-select {
+                display: none !important;
+            }
+            .print-assignment-text {
+                display: inline !important;
+            }
+            .print-page-break {
+                break-after: page;
+                page-break-after: always;
+            }
+            .print-clean {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                background: transparent !important;
+            }
+        }
     </style>
 </head>
 
@@ -128,14 +147,36 @@
             </div>
 
             <!-- Exclusive Racers List -->
-            <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6 print:hidden">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
-                    <h3 class="text-lg font-semibold text-emerald-800 mb-3">Racers Only in Session A</h3>
-                    <ul id="onlyARacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
+            <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6 print:block">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 print-page-break print-clean">
+                    <h3 class="text-lg font-semibold text-emerald-800 mb-3">Work assignments for session B</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-emerald-100">
+                                    <th class="pb-2 text-sm font-semibold text-emerald-800">Name</th>
+                                    <th class="pb-2 text-sm font-semibold text-emerald-800 w-1/3">Assignment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="onlyARacersList" class="text-gray-700 divide-y divide-gray-100">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-purple-100">
-                    <h3 class="text-lg font-semibold text-purple-800 mb-3">Racers Only in Session B</h3>
-                    <ul id="onlyBRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-purple-100 print-page-break print-clean">
+                    <h3 class="text-lg font-semibold text-purple-800 mb-3">Work assignments for session A</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-purple-100">
+                                    <th class="pb-2 text-sm font-semibold text-purple-800">Name</th>
+                                    <th class="pb-2 text-sm font-semibold text-purple-800 w-1/3">Assignment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="onlyBRacersList" class="text-gray-700 divide-y divide-gray-100">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -273,6 +314,10 @@
 
         // --- 3. Main Processing Logic ---
         function processData() {
+            window.userWorkAssignments = null;
+            window.lastSessionA = null;
+            window.lastSessionB = null;
+            window.lastClassBoaters = null;
             const statusEl = document.getElementById('status');
             const csvText = loadedTsvText.trim();
             const maxDiffInput = parseInt(document.getElementById('maxDiff').value, 10);
@@ -479,6 +524,124 @@
             return missing;
         }
 
+        // --- Work Assignment logic ---
+        function assignWork(racers) {
+            const result = [];
+            const N = racers.length;
+            
+            let assignments = [];
+            
+            // 1. Assign to Finish
+            const numFinish = Math.min(N, 3);
+            for (let i = 0; i < numFinish; i++) {
+                assignments.push("Finish");
+            }
+            
+            // 2. Assign to Stations A, B, C, D
+            const remaining = N - numFinish;
+            const stations = ["Station A", "Station B", "Station C", "Station D"];
+            
+            if (remaining > 0) {
+                const numStations = Math.min(remaining, 12);
+                const stationCounts = [0, 0, 0, 0];
+                for (let i = 0; i < numStations; i++) {
+                    stationCounts[i % 4]++;
+                }
+                
+                for (let sIdx = 0; sIdx < 4; sIdx++) {
+                    for (let j = 0; j < stationCounts[sIdx]; j++) {
+                        assignments.push(stations[sIdx]);
+                    }
+                }
+            }
+            
+            while (assignments.length < N) {
+                assignments.push("");
+            }
+            
+            for (let i = 0; i < N; i++) {
+                result.push({
+                    name: racers[i],
+                    assignment: assignments[i]
+                });
+            }
+            
+            return result;
+        }
+
+        // --- Work Assignment dynamic state ---
+        function handleWorkAssignmentChange(name, value, selectEl) {
+            if (!window.userWorkAssignments) window.userWorkAssignments = {};
+            window.userWorkAssignments[name.toLowerCase().trim()] = value;
+            updateTSV();
+            
+            // Update the print text element in the same cell
+            const cell = selectEl.closest('td');
+            if (cell) {
+                const printTextEl = cell.querySelector('.print-assignment-text');
+                if (printTextEl) {
+                    printTextEl.textContent = value || 'Unassigned';
+                }
+            }
+        }
+
+        function updateTSV() {
+            if (!window.lastSessionA || !window.lastSessionB || !window.lastClassBoaters) return;
+            
+            const missingSet = getMissingBibs();
+            let nextBib = 1;
+            function getNextBib() {
+                while (missingSet.has(nextBib)) {
+                    nextBib++;
+                }
+                return nextBib++;
+            }
+
+            let tsvRows = ["Class\tBib#\tWork Assignment\t\tName\tSession"];
+
+            window.lastSessionA.sort().forEach((cls) => {
+                window.lastClassBoaters[cls].sort().forEach(b => {
+                    let bib = getNextBib();
+                    
+                    let workAssign = "";
+                    if (b.includes('&')) {
+                        let partners = b.split('&').map(p => p.trim());
+                        let assigns = partners.map(p => {
+                            let a = window.userWorkAssignments[p.toLowerCase().trim()] || "";
+                            return a ? `${p}: ${a}` : "";
+                        }).filter(a => a);
+                        workAssign = assigns.join(', ');
+                    } else {
+                        workAssign = window.userWorkAssignments[b.toLowerCase().trim()] || "";
+                    }
+                    
+                    tsvRows.push(`${cls}\t${bib}\t${workAssign}\t\t${b}\tSession A`);
+                });
+            });
+
+            window.lastSessionB.sort().forEach((cls) => {
+                window.lastClassBoaters[cls].sort().forEach(b => {
+                    let bib = getNextBib();
+                    
+                    let workAssign = "";
+                    if (b.includes('&')) {
+                        let partners = b.split('&').map(p => p.trim());
+                        let assigns = partners.map(p => {
+                            let a = window.userWorkAssignments[p.toLowerCase().trim()] || "";
+                            return a ? `${p}: ${a}` : "";
+                        }).filter(a => a);
+                        workAssign = assigns.join(', ');
+                    } else {
+                        workAssign = window.userWorkAssignments[b.toLowerCase().trim()] || "";
+                    }
+                    
+                    tsvRows.push(`${cls}\t${bib}\t${workAssign}\t\t${b}\tSession B`);
+                });
+            });
+
+            window.lastGeneratedRegistrationTSV = tsvRows.join('\n');
+        }
+
         function renderResults(sessionA, sessionB, overlaps, onlyA, onlyB, evalResult, classBoaters) {
             document.getElementById('results').classList.remove('hidden');
 
@@ -491,11 +654,91 @@
                 overlapsContainer.classList.add('hidden');
             }
 
+            // Save variables for updating TSV dynamically
+            window.lastSessionA = sessionA;
+            window.lastSessionB = sessionB;
+            window.lastClassBoaters = classBoaters;
+
+            // Compute default work assignments if they aren't initialized yet
+            if (!window.userWorkAssignments) {
+                window.userWorkAssignments = {};
+                const assignmentsA = assignWork(onlyA);
+                const assignmentsB = assignWork(onlyB);
+                assignmentsA.forEach(item => {
+                    window.userWorkAssignments[item.name.toLowerCase().trim()] = item.assignment;
+                });
+                assignmentsB.forEach(item => {
+                    window.userWorkAssignments[item.name.toLowerCase().trim()] = item.assignment;
+                });
+            }
+
             const exclusiveContainer = document.getElementById('exclusiveRacersContainer');
             if (onlyA.length > 0 || onlyB.length > 0) {
                 exclusiveContainer.classList.remove('hidden');
-                document.getElementById('onlyARacersList').innerHTML = onlyA.length ? onlyA.map(n => `<li class="py-1">${n}</li>`).join('') : '<li class="py-1 text-gray-400 italic">None</li>';
-                document.getElementById('onlyBRacersList').innerHTML = onlyB.length ? onlyB.map(n => `<li class="py-1">${n}</li>`).join('') : '<li class="py-1 text-gray-400 italic">None</li>';
+                
+                document.getElementById('onlyARacersList').innerHTML = onlyA.length ? onlyA.map(name => {
+                    const currentAssign = window.userWorkAssignments[name.toLowerCase().trim()] || "";
+                    const options = ["Finish", "Station A", "Station B", "Station C", "Station D"]
+                        .map(opt => `<option value="${opt}" ${currentAssign === opt ? 'selected' : ''}>${opt}</option>`)
+                        .join('');
+                    
+                    const selectHTML = `
+                        <select onchange="handleWorkAssignmentChange('${name.replace(/'/g, "\\'")}', this.value, this)"
+                            class="work-assignment-select block w-full px-2 py-1 text-sm bg-transparent border border-emerald-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-emerald-800 font-semibold cursor-pointer">
+                            <option value="" ${currentAssign === "" ? 'selected' : ''}>Unassigned</option>
+                            ${options}
+                        </select>
+                    `;
+                    const printTextHTML = `
+                        <span class="print-assignment-text hidden font-semibold text-emerald-700">${currentAssign || 'Unassigned'}</span>
+                    `;
+                    
+                    return `
+                        <tr class="hover:bg-emerald-50/25 transition-colors">
+                            <td class="py-2 pr-4 text-sm">${name}</td>
+                            <td class="py-2 text-sm w-1/3">
+                                ${selectHTML}
+                                ${printTextHTML}
+                            </td>
+                        </tr>
+                    `;
+                }).join('') : `
+                    <tr>
+                        <td colspan="2" class="py-4 text-center text-sm text-gray-400 italic">None</td>
+                    </tr>
+                `;
+
+                document.getElementById('onlyBRacersList').innerHTML = onlyB.length ? onlyB.map(name => {
+                    const currentAssign = window.userWorkAssignments[name.toLowerCase().trim()] || "";
+                    const options = ["Finish", "Station A", "Station B", "Station C", "Station D"]
+                        .map(opt => `<option value="${opt}" ${currentAssign === opt ? 'selected' : ''}>${opt}</option>`)
+                        .join('');
+                    
+                    const selectHTML = `
+                        <select onchange="handleWorkAssignmentChange('${name.replace(/'/g, "\\'")}', this.value, this)"
+                            class="work-assignment-select block w-full px-2 py-1 text-sm bg-transparent border border-purple-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-purple-800 font-semibold cursor-pointer">
+                            <option value="" ${currentAssign === "" ? 'selected' : ''}>Unassigned</option>
+                            ${options}
+                        </select>
+                    `;
+                    const printTextHTML = `
+                        <span class="print-assignment-text hidden font-semibold text-purple-700">${currentAssign || 'Unassigned'}</span>
+                    `;
+                    
+                    return `
+                        <tr class="hover:bg-purple-50/25 transition-colors">
+                            <td class="py-2 pr-4 text-sm">${name}</td>
+                            <td class="py-2 text-sm w-1/3">
+                                ${selectHTML}
+                                ${printTextHTML}
+                            </td>
+                        </tr>
+                    `;
+                }).join('') : `
+                    <tr>
+                        <td colspan="2" class="py-4 text-center text-sm text-gray-400 italic">None</td>
+                    </tr>
+                `;
             } else {
                 exclusiveContainer.classList.add('hidden');
             }
@@ -510,8 +753,6 @@
                 return nextBib++;
             }
 
-            let tsvRows = ["Class\tBib#\tWork Assignment\t\tName\tSession"];
-
             let colA = [];
             sessionA.sort().forEach((cls) => {
                 colA.push({ type: 'empty' }); // Blank line before each class name
@@ -519,7 +760,6 @@
                 classBoaters[cls].sort().forEach(b => {
                     let bib = getNextBib();
                     colA.push({ type: 'boat', bib: bib, name: b });
-                    tsvRows.push(`${cls}\t${bib}\t\t\t${b}\tSession A`);
                 });
             });
 
@@ -530,11 +770,11 @@
                 classBoaters[cls].sort().forEach(b => {
                     let bib = getNextBib();
                     colB.push({ type: 'boat', bib: bib, name: b });
-                    tsvRows.push(`${cls}\t${bib}\t\t\t${b}\tSession B`);
                 });
             });
 
-            window.lastGeneratedRegistrationTSV = tsvRows.join('\n');
+            // Generate initial TSV
+            updateTSV();
 
             let maxRows = Math.max(colA.length, colB.length);
             let tableHTML = `
