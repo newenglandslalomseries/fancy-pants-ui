@@ -44,13 +44,13 @@
     </style>
 </head>
 
-<body class="bg-gray-50 min-h-screen text-gray-800 p-6">
+<body class="bg-gray-50 min-h-screen text-gray-800 p-6 print:bg-white print:p-0">
 
-    <div class="max-w-6xl mx-auto space-y-6">
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Race Session Optimizer</h1>
+    <div class="max-w-6xl mx-auto space-y-6 print:space-y-0 print:max-w-full">
+        <h1 class="text-2xl font-bold text-gray-900 mb-2 print:hidden">Race Session Optimizer</h1>
 
         <!-- Race Selector Section -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6 print:hidden">
             <div class="flex items-center gap-2 w-full">
                 <!-- Race Selector -->
                 <div class="flex-1 min-w-0">
@@ -79,13 +79,13 @@
 
         <!-- Loading State -->
         <div id="loading"
-            class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+            class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-gray-100 print:hidden">
             <div class="loading-spinner mb-4"></div>
             <p id="loadingText" class="text-gray-500 animate-pulse">Loading registration data...</p>
         </div>
 
         <!-- Optimization Controls -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 print:hidden">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex flex-wrap items-center gap-4">
                     <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
@@ -113,9 +113,9 @@
             </div>
         </div>
 
-        <div id="results" class="hidden space-y-6">
+        <div id="results" class="hidden space-y-6 print:space-y-0">
             <!-- Overlapping Racers List -->
-            <div id="overlapRacersContainer" class="hidden bg-white p-6 rounded-xl shadow-sm border border-red-100">
+            <div id="overlapRacersContainer" class="hidden bg-white p-6 rounded-xl shadow-sm border border-red-100 print:hidden">
                 <h3 class="text-lg font-semibold text-red-800 mb-3 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -128,7 +128,7 @@
             </div>
 
             <!-- Exclusive Racers List -->
-            <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6">
+            <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6 print:hidden">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
                     <h3 class="text-lg font-semibold text-emerald-800 mb-3">Racers Only in Session A</h3>
                     <ul id="onlyARacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
@@ -140,9 +140,9 @@
             </div>
 
             <!-- Sessions Breakdown (Spreadsheet Friendly) -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-none print:rounded-none">
                 <div
-                    class="bg-gray-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    class="bg-gray-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
                     <div>
                         <h3 class="text-xl font-bold">Sessions Breakdown</h3>
                         <div class="text-sm text-gray-300">Select and copy the table below, or click "Copy registration
@@ -153,7 +153,7 @@
                         Copy registration data
                     </button>
                 </div>
-                <div class="p-0 overflow-x-auto">
+                <div class="p-0 overflow-x-auto print:overflow-visible">
                     <div id="spreadsheetTableContainer"></div>
                 </div>
             </div>
