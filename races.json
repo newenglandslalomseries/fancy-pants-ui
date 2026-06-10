@@ -2,27 +2,39 @@
   "races": [
     {
       "name": "T'ville Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/1Uzqm_9lUI-2n_QoESqhJoZ4N8dcwg99-1kd1ettqkJA/edit?gid=1657054501#gid=1657054501"
+      "date": "2026-06-07",
+      "registration_url": "https://docs.google.com/spreadsheets/d/1Uzqm_9lUI-2n_QoESqhJoZ4N8dcwg99-1kd1ettqkJA/edit?gid=1684271407#gid=1684271407",
+      "results_url": "https://docs.google.com/spreadsheets/d/1Uzqm_9lUI-2n_QoESqhJoZ4N8dcwg99-1kd1ettqkJA/edit?gid=1657054501#gid=1657054501"
     },
     {
       "name": "Covered Bridge Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/11rAUPmsS2WxLjLeb2l4esAKFjriB0B5hRDg3Vshc3_A/edit?gid=1657054501#gid=1657054501"
+      "date": "2026-05-17",
+      "registration_url": "https://docs.google.com/spreadsheets/d/11rAUPmsS2WxLjLeb2l4esAKFjriB0B5hRDg3Vshc3_A/edit?gid=992429599",
+      "results_url": "https://docs.google.com/spreadsheets/d/11rAUPmsS2WxLjLeb2l4esAKFjriB0B5hRDg3Vshc3_A/edit?gid=1657054501#gid=1657054501"
     },
     {
       "name": "Kenduskeag Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/15v4F3qn6rd7DQQbIQoTBUdNUZoZMj0Kq4JV65Tvpihk/edit?gid=1657054501#gid=1657054501"
+      "date": "2026-05-10",
+      "registration_url": "https://docs.google.com/spreadsheets/d/15v4F3qn6rd7DQQbIQoTBUdNUZoZMj0Kq4JV65Tvpihk/edit?gid=1409559911",
+      "results_url": "https://docs.google.com/spreadsheets/d/15v4F3qn6rd7DQQbIQoTBUdNUZoZMj0Kq4JV65Tvpihk/edit?gid=1657054501#gid=1657054501"
     },
     {
       "name": "Winni Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/1Hbj5ZOBX61SwHnRDIJ_WP0oG1j5K8fIyY4iaREyNBws/edit?gid=1657054501#gid=1657054501"
+      "date": "2026-06-20",
+      "registration_url": "https://docs.google.com/spreadsheets/d/1Hbj5ZOBX61SwHnRDIJ_WP0oG1j5K8fIyY4iaREyNBws/edit?gid=1233851091",
+      "results_url": "https://docs.google.com/spreadsheets/d/1Hbj5ZOBX61SwHnRDIJ_WP0oG1j5K8fIyY4iaREyNBws/edit?gid=1657054501#gid=1657054501"
     },
     {
       "name": "Farmington Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/1Rl7Bb-81YtQ9kHiqxBJeNduuRbfq547ynXhdwU4VOW8/edit?gid=1657054501#gid=1657054501"
+      "date": "2026-10-17",
+      "registration_url": "https://docs.google.com/spreadsheets/d/1Rl7Bb-81YtQ9kHiqxBJeNduuRbfq547ynXhdwU4VOW8/edit?gid=1742759391",
+      "results_url": "https://docs.google.com/spreadsheets/d/1Rl7Bb-81YtQ9kHiqxBJeNduuRbfq547ynXhdwU4VOW8/edit?gid=1657054501#gid=1657054501"
     },
     {
       "name": "Farmington Slalom 2025",
-      "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+      "date": "2025-10-17",
+      "registration_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=844370283",
+      "results_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
     }
   ]
 }

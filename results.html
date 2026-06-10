@@ -234,7 +234,8 @@
             "races": [
                 {
                     "name": "Farmington Slalom 2025",
-                    "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+                    "registration_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=844370283",
+                    "results_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
                 }
             ]
         };
@@ -296,6 +297,13 @@
                 currentRaces = FALLBACK_RACES.races;
             }
 
+            // Sort currentRaces by date descending
+            currentRaces.sort((a, b) => {
+                const dA = a.date || '';
+                const dB = b.date || '';
+                return dB.localeCompare(dA);
+            });
+
             raceSelect.innerHTML = '';
             currentRaces.forEach((race, index) => {
                 const option = document.createElement('option');
@@ -305,6 +313,22 @@
             });
 
             if (currentRaces.length > 0) {
+                const today = new Date();
+                const target = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                const targetYear = target.getFullYear();
+                const targetMonth = String(target.getMonth() + 1).padStart(2, '0');
+                const targetDay = String(target.getDate()).padStart(2, '0');
+                const targetStr = `${targetYear}-${targetMonth}-${targetDay}`;
+
+                let initialIndex = 0;
+                for (let i = 0; i < currentRaces.length; i++) {
+                    if (currentRaces[i].date && currentRaces[i].date <= targetStr) {
+                        initialIndex = i;
+                        break;
+                    }
+                }
+
+                raceSelect.value = initialIndex;
                 handleRaceChange();
             }
         }
@@ -314,10 +338,11 @@
             const race = currentRaces[raceIndex];
             if (!race) return;
 
-            const idMatch = race.url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            const url = race.results_url || '';
+            const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
             sheetId = idMatch ? idMatch[1] : '';
 
-            const gidMatch = race.url.match(/gid=([0-9]+)/);
+            const gidMatch = url.match(/[?&#]gid=([0-9]+)/);
             gid = gidMatch ? gidMatch[1] : '0';
 
             document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: ${gid}`;

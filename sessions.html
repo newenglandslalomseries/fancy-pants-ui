@@ -141,7 +141,7 @@
                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                         </path>
                     </svg>
-                    Racers in Both Sessions
+                    Racers in Both Sessions - no work assignment
                 </h3>
                 <ul id="overlapRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
             </div>
@@ -186,8 +186,7 @@
                     class="bg-gray-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
                     <div>
                         <h3 class="text-xl font-bold">Sessions Breakdown</h3>
-                        <div class="text-sm text-gray-300">Select and copy the table below, or click "Copy registration
-                            data" to paste directly.</div>
+                        <div class="text-sm text-gray-300">Click "Copy registration data" to paste into Registration sheet.</div>
                     </div>
                     <button onclick="copyRegistrationData(this)"
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
@@ -205,6 +204,7 @@
         // State
         let currentRaces = [];
         let sheetId = '';
+        let sheetGid = '';
         let loadedTsvText = '';
 
         // --- 1. Basic TSV Parser ---
@@ -870,10 +870,19 @@
                 currentRaces = [
                     {
                         "name": "Farmington Slalom 2025",
-                        "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+                        "date": "2025-10-17",
+                        "registration_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=844370283",
+                        "results_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
                     }
                 ];
             }
+
+            // Sort currentRaces by date descending
+            currentRaces.sort((a, b) => {
+                const dA = a.date || '';
+                const dB = b.date || '';
+                return dB.localeCompare(dA);
+            });
 
             raceSelect.innerHTML = '';
             currentRaces.forEach((race, index) => {
@@ -884,6 +893,22 @@
             });
 
             if (currentRaces.length > 0) {
+                const today = new Date();
+                const target = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                const targetYear = target.getFullYear();
+                const targetMonth = String(target.getMonth() + 1).padStart(2, '0');
+                const targetDay = String(target.getDate()).padStart(2, '0');
+                const targetStr = `${targetYear}-${targetMonth}-${targetDay}`;
+
+                let initialIndex = 0;
+                for (let i = 0; i < currentRaces.length; i++) {
+                    if (currentRaces[i].date && currentRaces[i].date <= targetStr) {
+                        initialIndex = i;
+                        break;
+                    }
+                }
+
+                raceSelect.value = initialIndex;
                 handleRaceChange();
             }
         }
@@ -893,10 +918,14 @@
             const race = currentRaces[raceIndex];
             if (!race) return;
 
-            const idMatch = race.url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            const url = race.registration_url || '';
+            const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
             sheetId = idMatch ? idMatch[1] : '';
 
-            document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: 1684271407`;
+            const gidMatch = url.match(/[?&]gid=([0-9]+)/);
+            sheetGid = gidMatch ? gidMatch[1] : '0';
+
+            document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: ${sheetGid}`;
             document.getElementById('statusMessage').classList.add('hidden');
             document.getElementById('results').classList.add('hidden');
 
@@ -919,7 +948,7 @@
             optimizeBtn.disabled = true;
 
             try {
-                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=tsv&gid=1684271407&t=${new Date().getTime()}`;
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=tsv&gid=${sheetGid}&t=${new Date().getTime()}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Failed to fetch spreadsheet. Make sure it is shared or public.');
 
