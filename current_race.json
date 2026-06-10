@@ -1,5 +1,5 @@
 {
-  "race_name": "Blackwater 2026",
+  "race_name": "T'Ville 2026",
   "stations": [
     { "name": "Station A", "max_gate": 6 },
     { "name": "Station B", "max_gate": 11 },
