@@ -10,33 +10,83 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 
 <body class="bg-gray-50 min-h-screen text-gray-800 p-6">
 
     <div class="max-w-6xl mx-auto space-y-6">
-        <header class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">Race Session Optimizer</h1>
-            <p class="text-gray-600">Paste your tab-separated registration data below. The tool will minimize the number
-                of racers participating in both Session A and Session B, while keeping the total number of boats
-                balanced.</p>
-            <p class="text-sm text-gray-500 mt-2">Required columns: <code
-                    class="bg-gray-100 px-1 py-0.5 rounded">Name</code>, <code
-                    class="bg-gray-100 px-1 py-0.5 rounded">Race Classes</code>, and <code
-                    class="bg-gray-100 px-1 py-0.5 rounded">Tandem Boat Partner(s)</code>.</p>
-        </header>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Race Session Optimizer</h1>
 
+        <!-- Race Selector Section -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <div class="flex items-center gap-2 w-full">
+                <!-- Race Selector -->
+                <div class="flex-1 min-w-0">
+                    <select id="raceSelect" onchange="handleRaceChange()"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white font-semibold text-blue-900 truncate">
+                        <option value="">Loading races...</option>
+                    </select>
+                </div>
+
+                <!-- Refresh Button -->
+                <button onclick="refreshData()" id="refreshBtn" title="Refresh data from sheet"
+                    class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all flex items-center justify-center shadow-sm active:transform active:scale-95">
+                    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                        <path d="M16 16h5v5" />
+                    </svg>
+                </button>
+            </div>
+            <div id="statusMessage" class="mt-2 text-sm hidden font-medium text-gray-600"></div>
+            <div id="sourceInfo" class="mt-1 text-xs text-gray-400 truncate">Source: Loading...</div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading"
+            class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="loading-spinner mb-4"></div>
+            <p id="loadingText" class="text-gray-500 animate-pulse">Loading registration data...</p>
+        </div>
+
+        <!-- Optimization Controls -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <textarea id="csvInput" rows="10"
-                class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y"
-                placeholder="Name&#9;Race Classes&#9;Tandem Boat Partner(s)
-Alice&#9;Solo 1, Tandem 2, Solo 3&#9;Bob
-Bob&#9;Tandem 2&#9;
-Charlie&#9;Solo 1, Solo 3&#9;
-..."></textarea>
-
-            <div class="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex flex-wrap items-center gap-4">
                     <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
                         <label for="maxDiff" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Max Boat
@@ -46,7 +96,8 @@ Charlie&#9;Solo 1, Solo 3&#9;
                     </div>
 
                     <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
-                        <label for="missingBibs" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Missing Bibs:</label>
+                        <label for="missingBibs"
+                            class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Missing Bibs:</label>
                         <input type="text" id="missingBibs" placeholder="e.g. 5, 12, 15-20"
                             class="w-48 p-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                     </div>
@@ -54,8 +105,8 @@ Charlie&#9;Solo 1, Solo 3&#9;
 
                 <div class="flex items-center space-x-4">
                     <div id="status" class="text-sm font-medium text-gray-500"></div>
-                    <button onclick="processData()"
-                        class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <button onclick="processData()" id="optimizeBtn"
+                        class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
                         Optimize Sessions
                     </button>
                 </div>
@@ -63,17 +114,6 @@ Charlie&#9;Solo 1, Solo 3&#9;
         </div>
 
         <div id="results" class="hidden space-y-6">
-            <!-- Summary Metric -->
-            <div class="bg-blue-50 border border-blue-100 p-6 rounded-xl text-center relative">
-                <h2 class="text-lg font-semibold text-blue-900">Optimization Result</h2>
-                <div class="mt-2 text-4xl font-bold text-blue-600" id="overlapCount">0</div>
-                <div class="text-blue-800 mt-1 font-medium">Racers in Both Sessions</div>
-                <div id="constraintWarning"
-                    class="hidden mt-3 inline-block bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full font-medium border border-yellow-200">
-                    Warning: Impossible to meet boat difference constraint. Showing closest possible balance.
-                </div>
-            </div>
-
             <!-- Overlapping Racers List -->
             <div id="overlapRacersContainer" class="hidden bg-white p-6 rounded-xl shadow-sm border border-red-100">
                 <h3 class="text-lg font-semibold text-red-800 mb-3 flex items-center">
@@ -82,7 +122,7 @@ Charlie&#9;Solo 1, Solo 3&#9;
                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                         </path>
                     </svg>
-                    Affected Racers (Both Sessions)
+                    Racers in Both Sessions
                 </h3>
                 <ul id="overlapRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
             </div>
@@ -101,12 +141,15 @@ Charlie&#9;Solo 1, Solo 3&#9;
 
             <!-- Sessions Breakdown (Spreadsheet Friendly) -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="bg-gray-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div
+                    class="bg-gray-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h3 class="text-xl font-bold">Sessions Breakdown</h3>
-                        <div class="text-sm text-gray-300">Select and copy the table below, or click "Copy registration data" to paste directly.</div>
+                        <div class="text-sm text-gray-300">Select and copy the table below, or click "Copy registration
+                            data" to paste directly.</div>
                     </div>
-                    <button onclick="copyRegistrationData(this)" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
+                    <button onclick="copyRegistrationData(this)"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
                         Copy registration data
                     </button>
                 </div>
@@ -118,6 +161,11 @@ Charlie&#9;Solo 1, Solo 3&#9;
     </div>
 
     <script>
+        // State
+        let currentRaces = [];
+        let sheetId = '';
+        let loadedTsvText = '';
+
         // --- 1. Basic TSV Parser ---
         function parseTSV(text) {
             let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
@@ -226,12 +274,12 @@ Charlie&#9;Solo 1, Solo 3&#9;
         // --- 3. Main Processing Logic ---
         function processData() {
             const statusEl = document.getElementById('status');
-            const csvText = document.getElementById('csvInput').value.trim();
+            const csvText = loadedTsvText.trim();
             const maxDiffInput = parseInt(document.getElementById('maxDiff').value, 10);
             const maxDiff = isNaN(maxDiffInput) ? 5 : Math.max(0, maxDiffInput);
 
             if (!csvText) {
-                alert("Please paste registration data first.");
+                alert("No registration data loaded. Please select a race.");
                 return;
             }
 
@@ -434,15 +482,6 @@ Charlie&#9;Solo 1, Solo 3&#9;
         function renderResults(sessionA, sessionB, overlaps, onlyA, onlyB, evalResult, classBoaters) {
             document.getElementById('results').classList.remove('hidden');
 
-            document.getElementById('overlapCount').textContent = evalResult.overlap;
-
-            const warningEl = document.getElementById('constraintWarning');
-            if (evalResult.valid) {
-                warningEl.classList.add('hidden');
-            } else {
-                warningEl.classList.remove('hidden');
-            }
-
             const overlapsContainer = document.getElementById('overlapRacersContainer');
             const overlapsList = document.getElementById('overlapRacersList');
             if (overlaps.length > 0) {
@@ -574,6 +613,104 @@ Charlie&#9;Solo 1, Solo 3&#9;
                 alert("Failed to copy data: " + err);
             });
         }
+
+        // --- 4. Race Loading and Selector logic ---
+        async function init() {
+            await loadRaces();
+        }
+
+        async function loadRaces() {
+            const raceSelect = document.getElementById('raceSelect');
+            try {
+                const response = await fetch('races.json');
+                if (!response.ok) throw new Error('File not found');
+                const data = await response.json();
+                currentRaces = data.races;
+            } catch (e) {
+                currentRaces = [
+                    {
+                        "name": "Farmington Slalom 2025",
+                        "url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+                    }
+                ];
+            }
+
+            raceSelect.innerHTML = '';
+            currentRaces.forEach((race, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = race.name;
+                raceSelect.appendChild(option);
+            });
+
+            if (currentRaces.length > 0) {
+                handleRaceChange();
+            }
+        }
+
+        function handleRaceChange() {
+            const raceIndex = document.getElementById('raceSelect').value;
+            const race = currentRaces[raceIndex];
+            if (!race) return;
+
+            const idMatch = race.url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            sheetId = idMatch ? idMatch[1] : '';
+
+            document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: 1684271407`;
+            document.getElementById('statusMessage').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            preloadData();
+        }
+
+        async function preloadData() {
+            const select = document.getElementById('raceSelect');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const refreshIcon = document.getElementById('refreshIcon');
+            const statusMessage = document.getElementById('statusMessage');
+            const loading = document.getElementById('loading');
+            const optimizeBtn = document.getElementById('optimizeBtn');
+
+            select.disabled = true;
+            refreshBtn.disabled = true;
+            refreshIcon.classList.add('refresh-spin');
+            loading.classList.remove('hidden');
+            statusMessage.classList.add('hidden');
+            optimizeBtn.disabled = true;
+
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=tsv&gid=1684271407&t=${new Date().getTime()}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch spreadsheet. Make sure it is shared or public.');
+
+                loadedTsvText = await response.text();
+
+                statusMessage.textContent = `Loaded ${loadedTsvText.length} characters of registration data.`;
+                statusMessage.classList.remove('hidden');
+                statusMessage.className = "mt-2 text-sm font-medium text-emerald-600";
+                optimizeBtn.disabled = false;
+
+                // Run optimization automatically on load
+                processData();
+            } catch (error) {
+                console.error(error);
+                statusMessage.textContent = error.message;
+                statusMessage.classList.remove('hidden');
+                statusMessage.className = "mt-2 text-sm font-medium text-red-500";
+                loadedTsvText = '';
+            } finally {
+                loading.classList.add('hidden');
+                select.disabled = false;
+                refreshBtn.disabled = false;
+                refreshIcon.classList.remove('refresh-spin');
+            }
+        }
+
+        async function refreshData() {
+            await preloadData();
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 
