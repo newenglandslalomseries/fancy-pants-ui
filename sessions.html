@@ -143,6 +143,19 @@
                 <ul id="overlapRacersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
             </div>
 
+            <!-- Mismatched Partners List -->
+            <div id="mismatchedPartnersContainer" class="hidden bg-white p-6 rounded-xl shadow-sm border border-amber-100 print:hidden">
+                <h3 class="text-lg font-semibold text-amber-800 mb-3 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                        </path>
+                    </svg>
+                    Mismatched Tandem Partner Names - check spelling and registration
+                </h3>
+                <ul id="mismatchedPartnersList" class="list-disc pl-5 text-gray-700 space-y-1"></ul>
+            </div>
+
             <!-- Exclusive Racers List -->
             <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6 print:block">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 print-page-break print-clean">
@@ -345,6 +358,9 @@
                     let originalNames = new Map(); // normName -> Display Name
                     let classesSet = new Set();
                     let parsedRows = [];
+                    let registeredNames = new Set();
+                    let registeredNamesLower = new Map(); // lower -> original
+                    let tandemPartnerChecks = [];
 
                     // Pass 1: Parse Data & build base maps
                     for (let i = 1; i < lines.length; i++) {
@@ -353,6 +369,9 @@
 
                         let name = (row[nameIdx] || "").trim();
                         if (!name) continue;
+
+                        registeredNames.add(name);
+                        registeredNamesLower.set(name.toLowerCase(), name);
 
                         let normName = name.toLowerCase();
                         if (!racerMap.has(normName)) {
@@ -374,7 +393,13 @@
                                 let partnerName = (pIdx < partnersList.length) ? partnersList[pIdx] : "";
                                 pIdx++;
                                 if (partnerName) {
-                                    let normPartner = partnerName.toLowerCase().trim();
+                                    let trimmedPartner = partnerName.trim();
+                                    tandemPartnerChecks.push({
+                                        partnerName: trimmedPartner,
+                                        racerName: name
+                                    });
+
+                                    let normPartner = trimmedPartner.toLowerCase();
                                     partnerMap[cls] = normPartner;
 
                                     // Ensure partner is also known to the system even if they lack their own row
@@ -388,6 +413,25 @@
                         }
 
                         parsedRows.push({ normName, classes: classesList, partnerMap });
+                    }
+
+                    // Process tandem partner mismatches
+                    let mismatchedPartners = [];
+                    let seenMismatches = new Set();
+                    for (let check of tandemPartnerChecks) {
+                        if (!registeredNames.has(check.partnerName)) {
+                            let key = `${check.partnerName}||${check.racerName}`;
+                            if (!seenMismatches.has(key)) {
+                                seenMismatches.add(key);
+                                let norm = check.partnerName.toLowerCase();
+                                let registeredVersion = registeredNamesLower.get(norm);
+                                mismatchedPartners.push({
+                                    partnerName: check.partnerName,
+                                    racerName: check.racerName,
+                                    registeredVersion: registeredVersion
+                                });
+                            }
+                        }
                     }
 
                     let C = Array.from(classesSet);
@@ -478,7 +522,7 @@
                     onlyARacers.sort();
                     onlyBRacers.sort();
 
-                    renderResults(sessionA, sessionB, overlappingRacers, onlyARacers, onlyBRacers, resultEval, classBoaters);
+                    renderResults(sessionA, sessionB, overlappingRacers, onlyARacers, onlyBRacers, resultEval, classBoaters, mismatchedPartners);
                     statusEl.textContent = "";
 
                 } catch (e) {
@@ -639,7 +683,7 @@
             window.lastGeneratedRegistrationTSV = tsvRows.join('\n');
         }
 
-        function renderResults(sessionA, sessionB, overlaps, onlyA, onlyB, evalResult, classBoaters) {
+        function renderResults(sessionA, sessionB, overlaps, onlyA, onlyB, evalResult, classBoaters, mismatchedPartners = []) {
             document.getElementById('results').classList.remove('hidden');
 
             const overlapsContainer = document.getElementById('overlapRacersContainer');
@@ -649,6 +693,23 @@
                 overlapsList.innerHTML = overlaps.map(n => `<li class="py-1">${n}</li>`).join('');
             } else {
                 overlapsContainer.classList.add('hidden');
+            }
+
+            const mismatchesContainer = document.getElementById('mismatchedPartnersContainer');
+            const mismatchesList = document.getElementById('mismatchedPartnersList');
+            if (mismatchesContainer && mismatchesList) {
+                if (mismatchedPartners.length > 0) {
+                    mismatchesContainer.classList.remove('hidden');
+                    mismatchesList.innerHTML = mismatchedPartners.map(item => {
+                        if (item.registeredVersion) {
+                            return `<li class="py-1"><strong>${item.partnerName}</strong> (entered by <em>${item.racerName}</em>) does not exactly match registered name <strong>${item.registeredVersion}</strong> (casing mismatch)</li>`;
+                        } else {
+                            return `<li class="py-1"><strong>${item.partnerName}</strong> (entered by <em>${item.racerName}</em>) is not registered in the Name column</li>`;
+                        }
+                    }).join('');
+                } else {
+                    mismatchesContainer.classList.add('hidden');
+                }
             }
 
             // Save variables for updating TSV dynamically
