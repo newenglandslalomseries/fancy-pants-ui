@@ -68,7 +68,7 @@
     <div class="max-w-6xl mx-auto space-y-6 print:space-y-0 print:max-w-full">
         <h1 class="text-2xl font-bold text-gray-900 mb-2 print:hidden">Race Session Optimizer</h1>
 
-        <!-- Race Selector Section -->
+        <!-- Race Selector & Optimization Controls -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6 print:hidden">
             <div class="flex items-center gap-2 w-full">
                 <!-- Race Selector -->
@@ -92,20 +92,10 @@
                     </svg>
                 </button>
             </div>
+            
             <div id="statusMessage" class="mt-2 text-sm hidden font-medium text-gray-600"></div>
-            <div id="sourceInfo" class="mt-1 text-xs text-gray-400 truncate">Source: Loading...</div>
-        </div>
 
-        <!-- Loading State -->
-        <div id="loading"
-            class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-gray-100 print:hidden">
-            <div class="loading-spinner mb-4"></div>
-            <p id="loadingText" class="text-gray-500 animate-pulse">Loading registration data...</p>
-        </div>
-
-        <!-- Optimization Controls -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 print:hidden">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 pt-4 border-t border-gray-100">
                 <div class="flex flex-wrap items-center gap-4">
                     <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
                         <label for="maxDiff" class="text-sm font-medium text-gray-700 whitespace-nowrap ml-1">Max Boat
@@ -130,6 +120,13 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading"
+            class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-gray-100 print:hidden">
+            <div class="loading-spinner mb-4"></div>
+            <p id="loadingText" class="text-gray-500 animate-pulse">Loading registration data...</p>
         </div>
 
         <div id="results" class="hidden space-y-6 print:space-y-0">
@@ -925,7 +922,6 @@
             const gidMatch = url.match(/[?&]gid=([0-9]+)/);
             sheetGid = gidMatch ? gidMatch[1] : '0';
 
-            document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: ${sheetGid}`;
             document.getElementById('statusMessage').classList.add('hidden');
             document.getElementById('results').classList.add('hidden');
 
@@ -954,9 +950,7 @@
 
                 loadedTsvText = await response.text();
 
-                statusMessage.textContent = `Loaded ${loadedTsvText.length} characters of registration data.`;
-                statusMessage.classList.remove('hidden');
-                statusMessage.className = "mt-2 text-sm font-medium text-emerald-600";
+                statusMessage.classList.add('hidden');
                 optimizeBtn.disabled = false;
 
                 // Run optimization automatically on load
