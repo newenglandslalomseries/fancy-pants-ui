@@ -4,8 +4,7 @@ currently three apps:
 
 * Scoring, for recording gate judging results and raw time for each bib number.
 * Results, for viewing race results in real time.
-* Sessions (in development!), for assigning classes to sessions with
-  the fewest racers in both sessions.
+* Sessions, for assigning classes to sessions and racers to work assignments.
 
 # Architecture
 
@@ -18,12 +17,12 @@ Fancy Pants consists of these components:
   for collecting racer name, contact information, classes to enter,
   and tandem boat partner names.
 * The Results form, a single Google Form form shared by all races
-  submitted by teh Scoring app for collecting race results including
+  submitted by the Scoring app for collecting race results including
   bib number, gates touched or missed, and run time.
 * A Google Spreadsheet for each race. The spreadsheet contains
   multiple sheets:
   * Website-Registration: Submissions from the Registration form.
-  * Registartion: Summary of racer name, class, tandem partner, bib
+  * Registration: Summary of racer name, class, tandem partner, bib
     number, and work assignment, manually entered by the race
     organizer based on Website-Registration and the Sessions app.
   * Form Responses N: Submissions from the Results form.  Each Results
@@ -39,9 +38,8 @@ Fancy Pants consists of these components:
     through Nth) for each class.
 * The Sessions app reads racer, tandem partner, and class information
   from the Website Registration sheet to determine class to session
-  mappings and assign bib numbers to racers. The race organizer then
-  manually constructs the Registration sheet based on this
-  information.
+  mappings, assigns bib numbers to racers, and gives racers their work
+  assignments.
 * The Scoring app submits results to the Results Responses sheet for a
   single station and bib at a time.
 * The Results app reads the Unfiltered Results sheet and displays
@@ -81,9 +79,57 @@ The steps required to prepare for an upcoming race are:
   * Update the formulas on the Raw Results sheet of the spreadsheet to read from
     the new sheet created when the form was linked to the spreadsheet.
 * Update the races.json to include the race results spreadsheet,
-  making sure the upcoming race is listed first in the file.
+  providing separate URLs for the registration form results sheet and
+  the Unfiltered Results sheet.
 * Once the course is set up, edit the current_race.json file to
   reflect the race name and gate to station assignments.
+
+## Updating races.json
+
+The `races.json` file lists all the races for the Sessions and Results apps.
+
+```
+{
+  "races": [
+    {
+      "name": "Farmington Slalom 2025",
+      "date": "2025-10-17",
+      "registration_url": "https://docs.google.com/spreadsheets/d/.../edit?gid=844370283",
+      "results_url": "https://docs.google.com/spreadsheets/d/.../edit?gid=1657054501#gid=1657054501"
+    }
+  ]
+}
+```
+
+To add a new race, add a new curly-bracket (`{}`) object with keys
+`name` and `url` to the square-bracket (`[]`) array:
+
+```
+{
+  "races": [
+    {
+      "name": "Kenduskeag Slalom 2026",
+      "date": "2026-05-10",
+      "registration_url": "https://docs.google.com/spreadsheets/d/.../edit?gid=1409559911",
+      "results_url": "https://docs.google.com/spreadsheets/d/.../edit?gid=1657054501#gid=1657054501"
+    },
+    {
+      "name": "Farmington Slalom 2025",
+      "date": "2025-10-17",
+      "registration_url": "https://docs.google.com/spreadsheets/d/.../edit?gid=844370283",
+      "results_url": "https://docs.google.com/spreadsheets/d/.../edit?gid=1657054501#gid=1657054501"
+    }
+  ]
+}
+```
+
+The registration\_url must be for the web registration form results
+sheet and the results\_url must be for the "Unfiltered Results" sheet
+in the spreadsheet.
+
+Add a comma between the keys/values inside the curly-brackets and
+between entries in the array, but not after the last key/value or
+after the final entry in the array.
 
 # Scoring app
 
@@ -173,48 +219,8 @@ so `entry.1989426203` is the entry ID for the Gate #25 question.
 
 # Results app
 
-## Adding races to the viewer
-
-The `races.json` file lists all the races the viewer app can show results for:
-
-```
-{
-  "races": [
-    {
-      "name": "Farmington Slalom 2025",
-      "url": "https://docs.google.com/spreadsheets/d/.../edit?gid=1657054501#gid=1657054501"
-    }
-  ]
-}
-```
-
-To add a new race spreadsheet, add a new curly-bracket (`{}`) object
-with keys `name` and `url` to the square-bracket (`[]`) array:
-
-```
-{
-  "races": [
-    {
-      "name": "Kenduskeg Slalom 2026",
-      "url": "https://docs.google.com/spreadsheets/d/...?gid=1657054501#gid=1657054501"
-    },
-    {
-      "name": "Farmington Slalom 2025",
-      "url": "https://docs.google.com/spreadsheets/d/...?gid=1657054501#gid=1657054501"
-    }
-  ]
-}
-```
-
-The URL must be for the "Unfiltered Results" sheet in the
-spreadsheet. It is identified by the `gid` key in the URL.
-
-Add a comma between the name and url values and between entries in the
-array, but not after the url value or after the final entry in the
-array.
-
-The results viewer can display results for any file in the races.json
-file. It selects the first race in the file when initially loaded.
+The results viewer display results for any file in the races.json
+file.
 
 # Sessions app
 
