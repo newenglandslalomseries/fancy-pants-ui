@@ -59,6 +59,10 @@
                 padding: 0 !important;
                 background: transparent !important;
             }
+            .print-avoid-break {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
         }
     </style>
 </head>
@@ -869,123 +873,93 @@
                 return nextBib++;
             }
 
-            let colA = [];
-            sessionA.sort().forEach((cls) => {
-                colA.push({ type: 'empty' }); // Blank line before each class name
-                colA.push({ type: 'class', name: cls });
-                classBoaters[cls].sort().forEach(b => {
-                    let bib = getNextBib();
-                    colA.push({ type: 'boat', bib: bib, name: b });
-                });
-            });
-
-            let colB = [];
-            sessionB.sort().forEach((cls) => {
-                colB.push({ type: 'empty' }); // Blank line before each class name
-                colB.push({ type: 'class', name: cls });
-                classBoaters[cls].sort().forEach(b => {
-                    let bib = getNextBib();
-                    colB.push({ type: 'boat', bib: bib, name: b });
-                });
-            });
-
-            // Generate initial TSV
-            updateTSV();
-
-            let maxRows = Math.max(colA.length, colB.length);
-            let tableHTML = '';
-            
             const isSingleSession = document.getElementById('singleSession')?.checked;
-            if (isSingleSession) {
-                tableHTML = `
-                    <table class="w-full text-left border-collapse min-w-full">
-                        <thead>
-                            <tr>
-                                <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-emerald-50 text-emerald-900 w-full">
-                                    <div class="font-bold text-lg">Session A</div>
-                                    <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm text-gray-800">
-                `;
 
-                for (let i = 0; i < maxRows; i++) {
-                    let itemA = colA[i] || { type: 'empty' };
+            // Build Session A HTML
+            let htmlA = `
+                <table class="w-full text-left border-collapse min-w-full">
+                    <thead>
+                        <tr>
+                            <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-emerald-50 text-emerald-900 w-full">
+                                <div class="font-bold text-lg">Session A</div>
+                                <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
+                            </th>
+                        </tr>
+                    </thead>
+            `;
 
-                    let tdA = '';
-                    if (itemA.type === 'empty') {
-                        tdA = `<td colspan="2" class="p-2 border-b border-gray-200 h-6"></td>`;
-                    } else if (itemA.type === 'class') {
-                        tdA = `<td colspan="2" class="p-2 border-b border-gray-200 align-top bg-emerald-50/50"><strong>${itemA.name}</strong></td>`;
-                    } else if (itemA.type === 'boat') {
-                        tdA = `
-                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemA.bib}</td>
-                            <td class="p-2 border-b border-gray-200 align-top">${itemA.name}</td>
-                        `;
-                    }
-
-                    tableHTML += `
+            sessionA.sort().forEach((cls) => {
+                htmlA += `
+                    <tbody class="text-sm text-gray-800 print-avoid-break">
                         <tr class="hover:bg-gray-50 transition-colors">
-                            ${tdA}
+                            <td colspan="2" class="p-2 border-b border-gray-200 align-top bg-emerald-50/50"><strong>${cls}</strong></td>
+                        </tr>
+                `;
+                classBoaters[cls].sort().forEach(b => {
+                    let bib = getNextBib();
+                    htmlA += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${bib}</td>
+                            <td class="p-2 border-b border-gray-200 align-top">${b}</td>
                         </tr>
                     `;
-                }
-                tableHTML += `</tbody></table>`;
-            } else {
-                tableHTML = `
+                });
+                htmlA += `</tbody>`;
+            });
+            htmlA += `</table>`;
+
+            let htmlB = '';
+            if (!isSingleSession) {
+                htmlB = `
                     <table class="w-full text-left border-collapse min-w-full">
                         <thead>
                             <tr>
-                                <th colspan="2" class="p-3 border-b-2 border-r border-gray-200 bg-emerald-50 text-emerald-900 w-1/2">
-                                    <div class="font-bold text-lg">Session A</div>
-                                    <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
-                                </th>
-                                <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-purple-50 text-purple-900 w-1/2">
+                                <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-purple-50 text-purple-900 w-full">
                                     <div class="font-bold text-lg">Session B</div>
                                     <div class="font-normal text-sm mt-1">${sessionB.length} classes | ${evalResult.boatsB} boats</div>
                                 </th>
                             </tr>
                         </thead>
-                        <tbody class="text-sm text-gray-800">
                 `;
 
-                for (let i = 0; i < maxRows; i++) {
-                    let itemA = colA[i] || { type: 'empty' };
-                    let itemB = colB[i] || { type: 'empty' };
-
-                    let tdA = '';
-                    if (itemA.type === 'empty') {
-                        tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 h-6"></td>`;
-                    } else if (itemA.type === 'class') {
-                        tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 align-top bg-emerald-50/50"><strong>${itemA.name}</strong></td>`;
-                    } else if (itemA.type === 'boat') {
-                        tdA = `
-                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemA.bib}</td>
-                            <td class="p-2 border-r border-b border-gray-200 align-top">${itemA.name}</td>
-                        `;
-                    }
-
-                    let tdB = '';
-                    if (itemB.type === 'empty') {
-                        tdB = `<td colspan="2" class="p-2 border-b border-gray-200 h-6"></td>`;
-                    } else if (itemB.type === 'class') {
-                        tdB = `<td colspan="2" class="p-2 border-b border-gray-200 align-top bg-purple-50/50"><strong>${itemB.name}</strong></td>`;
-                    } else if (itemB.type === 'boat') {
-                        tdB = `
-                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemB.bib}</td>
-                            <td class="p-2 border-b border-gray-200 align-top">${itemB.name}</td>
-                        `;
-                    }
-
-                    tableHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            ${tdA}
-                            ${tdB}
-                        </tr>
+                sessionB.sort().forEach((cls) => {
+                    htmlB += `
+                        <tbody class="text-sm text-gray-800 print-avoid-break">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td colspan="2" class="p-2 border-b border-gray-200 align-top bg-purple-50/50"><strong>${cls}</strong></td>
+                            </tr>
                     `;
-                }
-                tableHTML += `</tbody></table>`;
+                    classBoaters[cls].sort().forEach(b => {
+                        let bib = getNextBib();
+                        htmlB += `
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${bib}</td>
+                                <td class="p-2 border-b border-gray-200 align-top">${b}</td>
+                            </tr>
+                        `;
+                    });
+                    htmlB += `</tbody>`;
+                });
+                htmlB += `</table>`;
+            }
+
+            // Generate initial TSV
+            updateTSV();
+
+            let tableHTML = '';
+            if (isSingleSession) {
+                tableHTML = `
+                    <div class="w-full">
+                        ${htmlA}
+                    </div>
+                `;
+            } else {
+                tableHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="border-r border-gray-100 pr-0 md:pr-6">${htmlA}</div>
+                        <div>${htmlB}</div>
+                    </div>
+                `;
             }
 
             document.getElementById('spreadsheetTableContainer').innerHTML = tableHTML;
