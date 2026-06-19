@@ -110,6 +110,13 @@
                         <input type="text" id="missingBibs" placeholder="e.g. 5, 12, 15-20"
                             class="w-48 p-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                     </div>
+
+                    <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
+                        <input type="checkbox" id="singleSession" onchange="processData()"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 ml-1">
+                        <label for="singleSession"
+                            class="text-sm font-medium text-gray-700 whitespace-nowrap mr-1">Single session only</label>
+                    </div>
                 </div>
 
                 <div class="flex items-center space-x-4">
@@ -158,8 +165,8 @@
 
             <!-- Exclusive Racers List -->
             <div id="exclusiveRacersContainer" class="hidden grid md:grid-cols-2 gap-6 print:block">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 print-page-break print-clean">
-                    <h3 class="text-lg font-semibold text-emerald-800 mb-3">Work assignments for session B</h3>
+                <div id="sessionBWorkAssignments" class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 print-page-break print-clean">
+                    <h3 id="sessionBWorkAssignmentsHeader" class="text-lg font-semibold text-emerald-800 mb-3">Work assignments for session B</h3>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
@@ -173,7 +180,7 @@
                         </table>
                     </div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-purple-100 print-page-break print-clean">
+                <div id="sessionAWorkAssignments" class="bg-white p-6 rounded-xl shadow-sm border border-purple-100 print-page-break print-clean">
                     <h3 class="text-lg font-semibold text-purple-800 mb-3">Work assignments for session A</h3>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -330,7 +337,19 @@
             window.lastClassBoaters = null;
             const statusEl = document.getElementById('status');
             const csvText = loadedTsvText.trim();
-            const maxDiffInput = parseInt(document.getElementById('maxDiff').value, 10);
+
+            const singleSessionCheckbox = document.getElementById('singleSession');
+            const maxDiffInputEl = document.getElementById('maxDiff');
+            if (singleSessionCheckbox && maxDiffInputEl) {
+                maxDiffInputEl.disabled = singleSessionCheckbox.checked;
+                if (singleSessionCheckbox.checked) {
+                    maxDiffInputEl.classList.add('bg-gray-200', 'cursor-not-allowed', 'text-gray-400');
+                } else {
+                    maxDiffInputEl.classList.remove('bg-gray-200', 'cursor-not-allowed', 'text-gray-400');
+                }
+            }
+
+            const maxDiffInput = maxDiffInputEl ? parseInt(maxDiffInputEl.value, 10) : 5;
             const maxDiff = isNaN(maxDiffInput) ? 5 : Math.max(0, maxDiffInput);
 
             if (!csvText) {
@@ -488,7 +507,18 @@
                     let classBoatArray = C.map(c => classBoaters[c].length);
 
                     // Run the optimizer
-                    const { state, eval: resultEval } = runSimulatedAnnealing(C.length, multiRacers, classBoatArray, maxDiff, 600);
+                    let state;
+                    let resultEval;
+                    const isSingleSession = singleSessionCheckbox && singleSessionCheckbox.checked;
+                    if (isSingleSession) {
+                        state = Array(C.length).fill(true);
+                        const totalBoats = classBoatArray.reduce((a, b) => a + b, 0);
+                        resultEval = { cost: 0, overlap: 0, diff: totalBoats, boatsA: totalBoats, boatsB: 0, valid: true };
+                    } else {
+                        const opt = runSimulatedAnnealing(C.length, multiRacers, classBoatArray, maxDiff, 600);
+                        state = opt.state;
+                        resultEval = opt.eval;
+                    }
 
                     // Reconstruct sets
                     let sessionA = [], sessionB = [];
@@ -566,38 +596,52 @@
         }
 
         // --- Work Assignment logic ---
-        function assignWork(racers) {
+        function assignWork(racers, isSingleSession = false) {
             const result = [];
             const N = racers.length;
+            if (N === 0) return result;
             
             let assignments = [];
             
-            // 1. Assign to Finish
-            const numFinish = Math.min(N, 3);
-            for (let i = 0; i < numFinish; i++) {
-                assignments.push("Finish");
-            }
-            
-            // 2. Assign to Stations A, B, C, D
-            const remaining = N - numFinish;
-            const stations = ["Station A", "Station B", "Station C", "Station D"];
-            
-            if (remaining > 0) {
-                const numStations = Math.min(remaining, 12);
-                const stationCounts = [0, 0, 0, 0];
-                for (let i = 0; i < numStations; i++) {
-                    stationCounts[i % 4]++;
+            if (isSingleSession) {
+                const stations = ["Finish", "Station A", "Station B", "Station C", "Station D"];
+                const stationCounts = [0, 0, 0, 0, 0];
+                for (let i = 0; i < N; i++) {
+                    stationCounts[i % 5]++;
                 }
-                
-                for (let sIdx = 0; sIdx < 4; sIdx++) {
+                for (let sIdx = 0; sIdx < 5; sIdx++) {
                     for (let j = 0; j < stationCounts[sIdx]; j++) {
                         assignments.push(stations[sIdx]);
                     }
                 }
-            }
-            
-            while (assignments.length < N) {
-                assignments.push("");
+            } else {
+                // 1. Assign to Finish
+                const numFinish = Math.min(N, 3);
+                for (let i = 0; i < numFinish; i++) {
+                    assignments.push("Finish");
+                }
+                
+                // 2. Assign to Stations A, B, C, D
+                const remaining = N - numFinish;
+                const stations = ["Station A", "Station B", "Station C", "Station D"];
+                
+                if (remaining > 0) {
+                    const numStations = Math.min(remaining, 12);
+                    const stationCounts = [0, 0, 0, 0];
+                    for (let i = 0; i < numStations; i++) {
+                        stationCounts[i % 4]++;
+                    }
+                    
+                    for (let sIdx = 0; sIdx < 4; sIdx++) {
+                        for (let j = 0; j < stationCounts[sIdx]; j++) {
+                            assignments.push(stations[sIdx]);
+                        }
+                    }
+                }
+                
+                while (assignments.length < N) {
+                    assignments.push("");
+                }
             }
             
             for (let i = 0; i < N; i++) {
@@ -720,8 +764,9 @@
             // Compute default work assignments if they aren't initialized yet
             if (!window.userWorkAssignments) {
                 window.userWorkAssignments = {};
-                const assignmentsA = assignWork(onlyA);
-                const assignmentsB = assignWork(onlyB);
+                const isSingleSession = document.getElementById('singleSession')?.checked;
+                const assignmentsA = assignWork(onlyA, isSingleSession);
+                const assignmentsB = assignWork(onlyB, isSingleSession);
                 assignmentsA.forEach(item => {
                     window.userWorkAssignments[item.name.toLowerCase().trim()] = item.assignment;
                 });
@@ -733,6 +778,19 @@
             const exclusiveContainer = document.getElementById('exclusiveRacersContainer');
             if (onlyA.length > 0 || onlyB.length > 0) {
                 exclusiveContainer.classList.remove('hidden');
+                
+                const isSingleSession = document.getElementById('singleSession')?.checked;
+                const sessionAWorkAssignments = document.getElementById('sessionAWorkAssignments');
+                const sessionBHeader = document.getElementById('sessionBWorkAssignmentsHeader');
+                if (isSingleSession) {
+                    exclusiveContainer.classList.remove('md:grid-cols-2');
+                    if (sessionAWorkAssignments) sessionAWorkAssignments.classList.add('hidden');
+                    if (sessionBHeader) sessionBHeader.textContent = "Work assignments";
+                } else {
+                    exclusiveContainer.classList.add('md:grid-cols-2');
+                    if (sessionAWorkAssignments) sessionAWorkAssignments.classList.remove('hidden');
+                    if (sessionBHeader) sessionBHeader.textContent = "Work assignments for session B";
+                }
                 
                 document.getElementById('onlyARacersList').innerHTML = onlyA.length ? onlyA.map(name => {
                     const currentAssign = window.userWorkAssignments[name.toLowerCase().trim()] || "";
@@ -835,59 +893,100 @@
             updateTSV();
 
             let maxRows = Math.max(colA.length, colB.length);
-            let tableHTML = `
-                <table class="w-full text-left border-collapse min-w-full">
-                    <thead>
-                        <tr>
-                            <th colspan="2" class="p-3 border-b-2 border-r border-gray-200 bg-emerald-50 text-emerald-900 w-1/2">
-                                <div class="font-bold text-lg">Session A</div>
-                                <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
-                            </th>
-                            <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-purple-50 text-purple-900 w-1/2">
-                                <div class="font-bold text-lg">Session B</div>
-                                <div class="font-normal text-sm mt-1">${sessionB.length} classes | ${evalResult.boatsB} boats</div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-sm text-gray-800">
-            `;
-
-            for (let i = 0; i < maxRows; i++) {
-                let itemA = colA[i] || { type: 'empty' };
-                let itemB = colB[i] || { type: 'empty' };
-
-                let tdA = '';
-                if (itemA.type === 'empty') {
-                    tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 h-6"></td>`;
-                } else if (itemA.type === 'class') {
-                    tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 align-top bg-emerald-50/50"><strong>${itemA.name}</strong></td>`;
-                } else if (itemA.type === 'boat') {
-                    tdA = `
-                        <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemA.bib}</td>
-                        <td class="p-2 border-r border-b border-gray-200 align-top">${itemA.name}</td>
-                    `;
-                }
-
-                let tdB = '';
-                if (itemB.type === 'empty') {
-                    tdB = `<td colspan="2" class="p-2 border-b border-gray-200 h-6"></td>`;
-                } else if (itemB.type === 'class') {
-                    tdB = `<td colspan="2" class="p-2 border-b border-gray-200 align-top bg-purple-50/50"><strong>${itemB.name}</strong></td>`;
-                } else if (itemB.type === 'boat') {
-                    tdB = `
-                        <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemB.bib}</td>
-                        <td class="p-2 border-b border-gray-200 align-top">${itemB.name}</td>
-                    `;
-                }
-
-                tableHTML += `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        ${tdA}
-                        ${tdB}
-                    </tr>
+            let tableHTML = '';
+            
+            const isSingleSession = document.getElementById('singleSession')?.checked;
+            if (isSingleSession) {
+                tableHTML = `
+                    <table class="w-full text-left border-collapse min-w-full">
+                        <thead>
+                            <tr>
+                                <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-emerald-50 text-emerald-900 w-full">
+                                    <div class="font-bold text-lg">Session A</div>
+                                    <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-800">
                 `;
+
+                for (let i = 0; i < maxRows; i++) {
+                    let itemA = colA[i] || { type: 'empty' };
+
+                    let tdA = '';
+                    if (itemA.type === 'empty') {
+                        tdA = `<td colspan="2" class="p-2 border-b border-gray-200 h-6"></td>`;
+                    } else if (itemA.type === 'class') {
+                        tdA = `<td colspan="2" class="p-2 border-b border-gray-200 align-top bg-emerald-50/50"><strong>${itemA.name}</strong></td>`;
+                    } else if (itemA.type === 'boat') {
+                        tdA = `
+                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemA.bib}</td>
+                            <td class="p-2 border-b border-gray-200 align-top">${itemA.name}</td>
+                        `;
+                    }
+
+                    tableHTML += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            ${tdA}
+                        </tr>
+                    `;
+                }
+                tableHTML += `</tbody></table>`;
+            } else {
+                tableHTML = `
+                    <table class="w-full text-left border-collapse min-w-full">
+                        <thead>
+                            <tr>
+                                <th colspan="2" class="p-3 border-b-2 border-r border-gray-200 bg-emerald-50 text-emerald-900 w-1/2">
+                                    <div class="font-bold text-lg">Session A</div>
+                                    <div class="font-normal text-sm mt-1">${sessionA.length} classes | ${evalResult.boatsA} boats</div>
+                                </th>
+                                <th colspan="2" class="p-3 border-b-2 border-gray-200 bg-purple-50 text-purple-900 w-1/2">
+                                    <div class="font-bold text-lg">Session B</div>
+                                    <div class="font-normal text-sm mt-1">${sessionB.length} classes | ${evalResult.boatsB} boats</div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-800">
+                `;
+
+                for (let i = 0; i < maxRows; i++) {
+                    let itemA = colA[i] || { type: 'empty' };
+                    let itemB = colB[i] || { type: 'empty' };
+
+                    let tdA = '';
+                    if (itemA.type === 'empty') {
+                        tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 h-6"></td>`;
+                    } else if (itemA.type === 'class') {
+                        tdA = `<td colspan="2" class="p-2 border-r border-b border-gray-200 align-top bg-emerald-50/50"><strong>${itemA.name}</strong></td>`;
+                    } else if (itemA.type === 'boat') {
+                        tdA = `
+                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemA.bib}</td>
+                            <td class="p-2 border-r border-b border-gray-200 align-top">${itemA.name}</td>
+                        `;
+                    }
+
+                    let tdB = '';
+                    if (itemB.type === 'empty') {
+                        tdB = `<td colspan="2" class="p-2 border-b border-gray-200 h-6"></td>`;
+                    } else if (itemB.type === 'class') {
+                        tdB = `<td colspan="2" class="p-2 border-b border-gray-200 align-top bg-purple-50/50"><strong>${itemB.name}</strong></td>`;
+                    } else if (itemB.type === 'boat') {
+                        tdB = `
+                            <td class="p-2 border-b border-gray-200 align-top w-12 text-gray-500 font-mono">${itemB.bib}</td>
+                            <td class="p-2 border-b border-gray-200 align-top">${itemB.name}</td>
+                        `;
+                    }
+
+                    tableHTML += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            ${tdA}
+                            ${tdB}
+                        </tr>
+                    `;
+                }
+                tableHTML += `</tbody></table>`;
             }
-            tableHTML += `</tbody></table>`;
 
             document.getElementById('spreadsheetTableContainer').innerHTML = tableHTML;
         }
