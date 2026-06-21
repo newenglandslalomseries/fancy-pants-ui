@@ -125,8 +125,12 @@
 
                 <div class="flex items-center space-x-4">
                     <div id="status" class="text-sm font-medium text-gray-500"></div>
+                    <button onclick="resetWorkAssignments()" id="resetBtn"
+                        class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:transform active:scale-95">
+                        Reset work assignments
+                    </button>
                     <button onclick="processData()" id="optimizeBtn"
-                        class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed active:transform active:scale-95">
                         Optimize Sessions
                     </button>
                 </div>
@@ -333,9 +337,38 @@
             return { state: bestGlobalState || Array(N_CLASSES).fill(true), eval: bestGlobalEval };
         }
 
+        function getTodayStr() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // --- 3. Main Processing Logic ---
         function processData() {
+            const raceIndex = document.getElementById('raceSelect').value;
+            const race = currentRaces[raceIndex];
+            const raceDate = race ? race.date : '';
+            const todayStr = getTodayStr();
+            const storedDate = localStorage.getItem('raceWorkAssignmentsDate');
+
+            if (storedDate && todayStr > storedDate) {
+                localStorage.removeItem('raceWorkAssignments');
+                localStorage.removeItem('raceWorkAssignmentsDate');
+            }
+
+            // Load work assignments from localStorage only if the stored assignments match the selected race
             window.userWorkAssignments = null;
+            const stored = localStorage.getItem('raceWorkAssignments');
+            const currentStoredDate = localStorage.getItem('raceWorkAssignmentsDate');
+            if (stored && currentStoredDate === raceDate) {
+                try {
+                    window.userWorkAssignments = JSON.parse(stored);
+                } catch (e) {
+                    console.error('Failed to parse work assignments from localStorage', e);
+                }
+            }
             window.lastSessionA = null;
             window.lastSessionB = null;
             window.lastClassBoaters = null;
@@ -662,6 +695,14 @@
         function handleWorkAssignmentChange(name, value, selectEl) {
             if (!window.userWorkAssignments) window.userWorkAssignments = {};
             window.userWorkAssignments[name.toLowerCase().trim()] = value;
+            localStorage.setItem('raceWorkAssignments', JSON.stringify(window.userWorkAssignments));
+            
+            const raceIndex = document.getElementById('raceSelect').value;
+            const race = currentRaces[raceIndex];
+            if (race && race.date) {
+                localStorage.setItem('raceWorkAssignmentsDate', race.date);
+            }
+            
             updateTSV();
             
             // Update the print text element in the same cell
@@ -672,6 +713,13 @@
                     printTextEl.textContent = value || 'Unassigned';
                 }
             }
+        }
+
+        function resetWorkAssignments() {
+            localStorage.removeItem('raceWorkAssignments');
+            localStorage.removeItem('raceWorkAssignmentsDate');
+            window.userWorkAssignments = null;
+            processData();
         }
 
         function updateTSV() {
@@ -765,25 +813,41 @@
             window.lastSessionB = sessionB;
             window.lastClassBoaters = classBoaters;
 
-            // Compute default work assignments if they aren't initialized yet
+            // Compute default work assignments for racers who do not have one yet
             if (!window.userWorkAssignments) {
                 window.userWorkAssignments = {};
-                const isSingleSession = document.getElementById('singleSession')?.checked;
-                const assignmentsA = assignWork(onlyA, isSingleSession);
-                const assignmentsB = assignWork(onlyB, isSingleSession);
-                assignmentsA.forEach(item => {
-                    window.userWorkAssignments[item.name.toLowerCase().trim()] = item.assignment;
-                });
-                assignmentsB.forEach(item => {
-                    window.userWorkAssignments[item.name.toLowerCase().trim()] = item.assignment;
-                });
+            }
+            const isSingleSession = document.getElementById('singleSession')?.checked;
+            const assignmentsA = assignWork(onlyA, isSingleSession);
+            const assignmentsB = assignWork(onlyB, isSingleSession);
+            let hasNewAssignments = false;
+            assignmentsA.forEach(item => {
+                const key = item.name.toLowerCase().trim();
+                if (window.userWorkAssignments[key] === undefined) {
+                    window.userWorkAssignments[key] = item.assignment;
+                    hasNewAssignments = true;
+                }
+            });
+            assignmentsB.forEach(item => {
+                const key = item.name.toLowerCase().trim();
+                if (window.userWorkAssignments[key] === undefined) {
+                    window.userWorkAssignments[key] = item.assignment;
+                    hasNewAssignments = true;
+                }
+            });
+            if (hasNewAssignments) {
+                localStorage.setItem('raceWorkAssignments', JSON.stringify(window.userWorkAssignments));
+                const raceIndex = document.getElementById('raceSelect').value;
+                const race = currentRaces[raceIndex];
+                if (race && race.date) {
+                    localStorage.setItem('raceWorkAssignmentsDate', race.date);
+                }
             }
 
             const exclusiveContainer = document.getElementById('exclusiveRacersContainer');
             if (onlyA.length > 0 || onlyB.length > 0) {
                 exclusiveContainer.classList.remove('hidden');
                 
-                const isSingleSession = document.getElementById('singleSession')?.checked;
                 const sessionAWorkAssignments = document.getElementById('sessionAWorkAssignments');
                 const sessionBHeader = document.getElementById('sessionBWorkAssignmentsHeader');
                 if (isSingleSession) {
@@ -872,8 +936,6 @@
                 }
                 return nextBib++;
             }
-
-            const isSingleSession = document.getElementById('singleSession')?.checked;
 
             // Build Session A HTML
             let htmlA = `
@@ -1032,10 +1094,18 @@
                 const targetStr = `${targetYear}-${targetMonth}-${targetDay}`;
 
                 let initialIndex = 0;
-                for (let i = 0; i < currentRaces.length; i++) {
-                    if (currentRaces[i].date && currentRaces[i].date <= targetStr) {
-                        initialIndex = i;
-                        break;
+                const savedRaceName = localStorage.getItem('selectedRaceName');
+                if (savedRaceName) {
+                    const savedIdx = currentRaces.findIndex(r => r.name === savedRaceName);
+                    if (savedIdx !== -1) {
+                        initialIndex = savedIdx;
+                    }
+                } else {
+                    for (let i = 0; i < currentRaces.length; i++) {
+                        if (currentRaces[i].date && currentRaces[i].date <= targetStr) {
+                            initialIndex = i;
+                            break;
+                        }
                     }
                 }
 
@@ -1048,6 +1118,8 @@
             const raceIndex = document.getElementById('raceSelect').value;
             const race = currentRaces[raceIndex];
             if (!race) return;
+
+            localStorage.setItem('selectedRaceName', race.name);
 
             const url = race.registration_url || '';
             const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
