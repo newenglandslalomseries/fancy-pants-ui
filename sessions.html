@@ -438,33 +438,39 @@
                         let classesList = (row[classesIdx] || "").split(',').map(s => s.trim()).filter(s => s);
                         let partnersList = (row[partnersIdx] || "").split(',').map(s => s.trim()).filter(s => s);
 
-                        let pIdx = 0;
+                        let tandemClasses = classesList.filter(cls => cls.includes('2'));
                         let partnerMap = {}; // cls -> normPartner
 
                         for (let cls of classesList) {
                             classesSet.add(cls);
                             racerMap.get(normName).add(cls);
+                        }
 
-                            if (cls.includes('2')) {
-                                let partnerName = (pIdx < partnersList.length) ? partnersList[pIdx] : "";
-                                pIdx++;
-                                if (partnerName) {
-                                    let trimmedPartner = partnerName.trim();
-                                    tandemPartnerChecks.push({
-                                        partnerName: trimmedPartner,
-                                        racerName: name
-                                    });
+                        for (let idx = 0; idx < tandemClasses.length; idx++) {
+                            let cls = tandemClasses[idx];
+                            let partnerName = "";
+                            if (partnersList.length === 1) {
+                                partnerName = partnersList[0];
+                            } else if (idx < partnersList.length) {
+                                partnerName = partnersList[idx];
+                            }
 
-                                    let normPartner = trimmedPartner.toLowerCase();
-                                    partnerMap[cls] = normPartner;
+                            if (partnerName) {
+                                let trimmedPartner = partnerName.trim();
+                                tandemPartnerChecks.push({
+                                    partnerName: trimmedPartner,
+                                    racerName: name
+                                });
 
-                                    // Ensure partner is also known to the system even if they lack their own row
-                                    if (!racerMap.has(normPartner)) {
-                                        racerMap.set(normPartner, new Set());
-                                        originalNames.set(normPartner, partnerName);
-                                    }
-                                    racerMap.get(normPartner).add(cls);
+                                let normPartner = trimmedPartner.toLowerCase();
+                                partnerMap[cls] = normPartner;
+
+                                // Ensure partner is also known to the system even if they lack their own row
+                                if (!racerMap.has(normPartner)) {
+                                    racerMap.set(normPartner, new Set());
+                                    originalNames.set(normPartner, partnerName);
                                 }
+                                racerMap.get(normPartner).add(cls);
                             }
                         }
 
