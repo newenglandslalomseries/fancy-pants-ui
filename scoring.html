@@ -639,513 +639,515 @@
     </div>
 
 
-    <script>
-        window.addEventListener('DOMContentLoaded', (event) => {
-            const form = document.getElementById('gate-form');
-            const stationSelector = document.getElementById('station-selector');
-            const bibSection = document.getElementById('bib-section');
-            const bibInput = document.getElementById('bib-number');
-            const gatesContainer = document.getElementById('gates-container');
-            const timeSection = document.getElementById('time-section');
-            const timeInput = document.getElementById('time-input');
-            const statusMessage = document.getElementById('status-message');
-            const submitBtn = document.getElementById('submit-btn');
-            const loadingState = document.getElementById('loading-state');
-            const dnfBtn = document.getElementById('dnf-btn');
-            const loadingError = document.getElementById('loading-error');
-            const formContent = document.getElementById('form-content');
-            const raceTitle = document.getElementById('race-title');
+    <script type="module">
+        import { getStationGateMap, formatTime } from './scoring.js';
 
-            const confirmationModal = document.getElementById('confirmation-modal');
-            const confirmationSummary = document.getElementById('confirmation-summary');
-            const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
-            const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
+        const form = document.getElementById('gate-form');
+        const stationSelector = document.getElementById('station-selector');
+        const bibSection = document.getElementById('bib-section');
+        const bibInput = document.getElementById('bib-number');
+        const gatesContainer = document.getElementById('gates-container');
+        const timeSection = document.getElementById('time-section');
+        const timeInput = document.getElementById('time-input');
+        const statusMessage = document.getElementById('status-message');
+        const submitBtn = document.getElementById('submit-btn');
+        const loadingState = document.getElementById('loading-state');
+        const dnfBtn = document.getElementById('dnf-btn');
+        const loadingError = document.getElementById('loading-error');
+        const formContent = document.getElementById('form-content');
+        const raceTitle = document.getElementById('race-title');
 
-            const viewSubmissionsBtn = document.getElementById('view-submissions-btn');
-            const recentSubmissionsModal = document.getElementById('recent-submissions-modal');
-            const recentSubmissionsList = document.getElementById('recent-submissions-list');
-            const closeSubmissionsBtn = document.getElementById('close-submissions-btn');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const confirmationSummary = document.getElementById('confirmation-summary');
+        const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
+        const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
 
-            // Read URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
+        const viewSubmissionsBtn = document.getElementById('view-submissions-btn');
+        const recentSubmissionsModal = document.getElementById('recent-submissions-modal');
+        const recentSubmissionsList = document.getElementById('recent-submissions-list');
+        const closeSubmissionsBtn = document.getElementById('close-submissions-btn');
 
-            const vParam = urlParams.get('v');
-            if (vParam) {
-                document.getElementById('v-hidden-input').value = vParam;
+        // Read URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const vParam = urlParams.get('v');
+        if (vParam) {
+            document.getElementById('v-hidden-input').value = vParam;
+        }
+
+        // Fallback submission URL
+        const DEFAULT_SUBMISSION_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/formResponse';
+
+        // Use 'u' query parameter if present, otherwise use fallback
+        const SUBMISSION_URL = urlParams.get('u') || DEFAULT_SUBMISSION_URL;
+
+        // Global maps to store station->gate mapping and finish status
+        let stationGateMap = {};
+        let isFinishStation = {};
+        let currentSubmissionIsDNF = false;
+        let recentSubmissions = []; // Array to store recent submissions
+        let pendingSubmissionData = null; // Temporarily store submission data before confirm
+
+        /**
+         * Fetches and parses the race metadata from a local JSON file.
+         * Includes retry logic and a fallback for the canvas environment.
+         */
+        async function fetchAndParseMetadata() {
+            try {
+                // Fetch the raw JSON file from the same origin
+                // The timestamp is to prevent browser caching.
+                const response = await fetch(`./current_race.json?timestamp=${new Date().getTime()}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch current_race.json (status: ${response.status})`);
+                }
+
+                const metadata = await response.json();
+
+                // Basic validation of the fetched metadata
+                console.log("Fetched metadata:", metadata);
+
+                if (!metadata.race_name || !metadata.stations) {
+                    throw new Error("Invalid metadata format. 'race_name' or 'stations' missing.");
+                }
+
+                return metadata;
+
+            } catch (error) {
+                // Check if this is the "Failed to parse URL" error specific to the canvas
+                if (error.message.includes("Failed to parse URL")) {
+                    console.warn("Canvas environment detected. Using hardcoded fallback metadata.");
+                    // Return the hardcoded fallback metadata
+                    return {
+                        "race_name": "Test Race (Canvas)",
+                        "stations": [
+                            { "name": "Start", "max_gate": 3 },
+                            { "name": "Station A", "max_gate": 8 },
+                            { "name": "Finish", "is_finish": true }
+                        ]
+                    };
+                }
+
+                // For other errors, use the retry logic
+                console.error("Error fetching or parsing metadata:", error);
+                loadingError.textContent = `Error: ${error.message}. Retrying in 5s...`;
+                return null;
+            }
+        }
+
+        /**
+         * Populates the station selector and gate map from the parsed metadata.
+         */
+        function buildStationUI(metadata) {
+            // Set the race title
+            raceTitle.textContent = metadata.race_name;
+
+            // Clear any existing options
+            stationSelector.innerHTML = '<option value="" disabled selected>Select a station</option>';
+            
+            const maps = getStationGateMap(metadata.stations);
+            stationGateMap = maps.stationGateMap;
+            isFinishStation = maps.isFinishStation;
+
+            metadata.stations.forEach(station => {
+                const option = document.createElement('option');
+
+                // Use a unique value for the selector, e.g., "Station A"
+                let stationName = station.name;
+                if (stationName === "A" || stationName === "B" || stationName === "C" || stationName === "D") {
+                    stationName = `Station ${station.name}`;
+                }
+                option.value = stationName;
+                option.textContent = stationName;
+                stationSelector.appendChild(option);
+            });
+        }
+
+        /**
+         * Shows/hides form sections based on the selected station.
+         */
+        function updateFormVisibility() {
+            const selectedStation = stationSelector.value;
+            const gatesToShow = stationGateMap[selectedStation] || [];
+            const isFinish = isFinishStation[selectedStation] || false;
+
+            // Sync the selected station to the hidden input for form submission
+            document.getElementById('station-hidden-input').value = selectedStation || "";
+
+            if (!selectedStation) {
+                bibSection.classList.add('hidden');
+                gatesContainer.classList.add('hidden');
+                timeSection.classList.add('hidden');
+                bibInput.disabled = true;
+                timeInput.disabled = true;
+                stationSelector.disabled = false;
+                return;
             }
 
-            // Fallback submission URL
-            const DEFAULT_SUBMISSION_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSe8BGyWb91SaPUdOfizgt0bZvLgCLwBp2P4gPCOHiruyRaOUw/formResponse';
+            // A station is selected, so lock the selector
+            stationSelector.disabled = true;
 
-            // Use 'u' query parameter if present, otherwise use fallback
-            const SUBMISSION_URL = urlParams.get('u') || DEFAULT_SUBMISSION_URL;
+            // Show Bib section
+            bibSection.classList.remove('hidden');
+            bibInput.disabled = false;
+            // Focus the bib input
+            bibInput.focus();
 
-            // Global maps to store station->gate mapping and finish status
-            let stationGateMap = {};
-            let isFinishStation = {};
-            let currentSubmissionIsDNF = false;
-            let recentSubmissions = []; // Array to store recent submissions
-            let pendingSubmissionData = null; // Temporarily store submission data before confirm
+            // Show/hide gates
+            if (gatesToShow.length > 0) {
+                gatesContainer.classList.remove('hidden');
+                // Loop through all possible gates (1-25)
+                for (let i = 1; i <= 25; i++) {
+                    const gateRow = document.getElementById(`gate-${i}`);
+                    if (!gateRow) continue; // Skip if gate doesn't exist in HTML
 
-            /**
-             * Fetches and parses the race metadata from a local JSON file.
-             * Includes retry logic and a fallback for the canvas environment.
-             */
-            async function fetchAndParseMetadata() {
-                try {
-                    // Fetch the raw JSON file from the same origin
-                    // The timestamp is to prevent browser caching.
-                    const response = await fetch(`./current_race.json?timestamp=${new Date().getTime()}`);
+                    const inputs = document.querySelectorAll(`input[name="${gateRow.querySelector('input[type=radio]').name}"]`);
 
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch current_race.json (status: ${response.status})`);
+                    if (gatesToShow.includes(i)) {
+                        gateRow.classList.remove('hidden');
+                        // Enable radio buttons for this gate
+                        inputs.forEach(input => input.disabled = false);
+                    } else {
+                        gateRow.classList.add('hidden');
+                        // Disable radio buttons for this gate
+                        inputs.forEach(input => input.disabled = true);
                     }
-
-                    const metadata = await response.json();
-
-                    // Basic validation of the fetched metadata
-                    console.log("Fetched metadata:", metadata);
-
-                    if (!metadata.race_name || !metadata.stations) {
-                        throw new Error("Invalid metadata format. 'race_name' or 'stations' missing.");
+                }
+            } else {
+                gatesContainer.classList.add('hidden');
+                // Disable all gate inputs
+                for (let i = 1; i <= 25; i++) {
+                    const gateRow = document.getElementById(`gate-${i}`);
+                    if (gateRow) {
+                        const inputs = document.querySelectorAll(`input[name="${gateRow.querySelector('input[type=radio]').name}"]`);
+                        inputs.forEach(input => input.disabled = true);
                     }
-
-                    return metadata;
-
-                } catch (error) {
-                    // Check if this is the "Failed to parse URL" error specific to the canvas
-                    if (error.message.includes("Failed to parse URL")) {
-                        console.warn("Canvas environment detected. Using hardcoded fallback metadata.");
-                        // Return the hardcoded fallback metadata
-                        return {
-                            "race_name": "Test Race (Canvas)",
-                            "stations": [
-                                { "name": "Start", "max_gate": 3 },
-                                { "name": "Station A", "max_gate": 8 },
-                                { "name": "Finish", "is_finish": true }
-                            ]
-                        };
-                    }
-
-                    // For other errors, use the retry logic
-                    console.error("Error fetching or parsing metadata:", error);
-                    loadingError.textContent = `Error: ${error.message}. Retrying in 5s...`;
-                    return null;
                 }
             }
 
-            /**
-             * Populates the station selector and gate map from the parsed metadata.
-             */
-            function buildStationUI(metadata) {
-                // Set the race title
-                raceTitle.textContent = metadata.race_name;
+            // Show/hide time field
+            if (isFinish) {
+                timeSection.classList.remove('hidden');
+                timeInput.disabled = false;
+                timeInput.required = true;
+            } else {
+                timeSection.classList.add('hidden');
+                timeInput.disabled = true;
+                timeInput.required = false;
+            }
+        }
 
-                // Clear any existing options
-                stationSelector.innerHTML = '<option value="" disabled selected>Select a station</option>';
-                stationGateMap = {};
-                isFinishStation = {};
+        /**
+         * Initializes the application, fetches data, and sets up listeners.
+         */
+        async function initializeApp() {
+            loadingState.classList.remove('hidden');
+            loadingError.textContent = '';
+            formContent.classList.add('hidden');
 
-                let lastMaxGate = 0;
+            let metadata = null;
+            while (!metadata) { // Loop until we get metadata (either real or fallback)
+                metadata = await fetchAndParseMetadata();
+                if (!metadata) {
+                    // This means a retriable error occurred
+                    // Wait 5 seconds before retrying
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+            }
 
-                metadata.stations.forEach(station => {
-                    const option = document.createElement('option');
+            buildStationUI(metadata);
 
-                    // Use a unique value for the selector, e.g., "Station A"
-                    let stationName = station.name;
-                    if (stationName === "A" || stationName === "B" || stationName === "C" || stationName === "D") {
-                        stationName = `Station ${station.name}`;
-                    }
-                    option.value = stationName;
-                    option.textContent = stationName;
-                    stationSelector.appendChild(option);
+            // Hide loading state and show form
+            loadingState.classList.add('hidden');
+            formContent.classList.remove('hidden');
 
-                    // Store finish status
-                    isFinishStation[stationName] = !!station.is_finish;
+            // Set up event listeners
+            stationSelector.addEventListener('change', updateFormVisibility);
+        }
 
-                    // Build the gate map
-                    if (station.max_gate) {
-                        const startGate = lastMaxGate + 1;
-                        const endGate = station.max_gate;
-                        stationGateMap[stationName] = [];
-                        for (let i = startGate; i <= endGate; i++) {
-                            stationGateMap[stationName].push(i);
+        // Auto-format the time input (Right-to-Left fill)
+        timeInput.addEventListener('input', function(e) {
+            e.target.value = formatTime(e.target.value);
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            // --- NEW BIB NUMBER VALIDATION ---
+            const bibNumberInput = document.getElementById('bib-number');
+            const bibNumberValue = bibNumberInput.value.trim();
+
+            // Check if it's a non-empty string of digits (integer)
+            if (!/^\d+$/.test(bibNumberValue)) {
+                statusMessage.textContent = 'Error: Bib Number must be a whole number (e.g., 123).';
+                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
+                statusMessage.classList.remove('hidden');
+                bibNumberInput.focus();
+                bibNumberInput.select();
+                return; // Stop the submission
+            }
+            // --- END NEW VALIDATION ---
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                statusMessage.textContent = 'Please fill out all required fields.';
+                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
+                statusMessage.classList.remove('hidden');
+                return;
+            }
+
+            // --- Build Confirmation Summary ---
+            confirmationSummary.innerHTML = ''; // Clear previous summary
+            let summaryHtml = '';
+
+            // Add Station
+            summaryHtml += `<p class="text-center text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">${stationSelector.value}</p>`;
+
+            // Add Bib
+            summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
+
+            let gatesData = [];
+            // Add Gates (if any are visible)
+            const gatesToShow = stationGateMap[stationSelector.value] || [];
+            if (gatesToShow.length > 0) {
+                summaryHtml += '<ul class="list-none space-y-2 mt-4 text-2xl">';
+                gatesToShow.forEach(gateNum => {
+                    const gateRow = document.getElementById(`gate-${gateNum}`);
+                    if (!gateRow) return;
+                    const inputs = gateRow.querySelectorAll('input[type=radio]');
+                    let selectedValue = 'Clean'; // Default
+                    for (const input of inputs) {
+                        if (input.checked) {
+                            selectedValue = input.value;
+                            break;
                         }
-                        lastMaxGate = station.max_gate;
+                    }
+                    if (selectedValue !== 'Clean') {
+                        summaryHtml += `<li><strong>Gate ${gateNum}:</strong> <span class="font-bold ${selectedValue === 'Touch' ? 'text-yellow-500' : 'text-red-500'}">${selectedValue}</span></li>`;
+                        gatesData.push({ gate: gateNum, value: selectedValue });
                     } else {
-                        stationGateMap[stationName] = []; // e.g., for Finish station
+                        summaryHtml += `<li>Gate ${gateNum}: ${selectedValue}</li>`;
                     }
                 });
+                summaryHtml += '</ul>';
             }
 
-            /**
-             * Shows/hides form sections based on the selected station.
-             */
-            function updateFormVisibility() {
-                const selectedStation = stationSelector.value;
-                const gatesToShow = stationGateMap[selectedStation] || [];
-                const isFinish = isFinishStation[selectedStation] || false;
+            // Add Time (if visible)
+            if (!timeInput.disabled) {
+                summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> ${timeInput.value}</p>`;
+            }
 
-                // Sync the selected station to the hidden input for form submission
-                document.getElementById('station-hidden-input').value = selectedStation || "";
+            pendingSubmissionData = {
+                station: stationSelector.value,
+                bib: bibInput.value,
+                gates: gatesData,
+                time: !timeInput.disabled ? timeInput.value : null,
+                isDNF: false
+            };
 
-                if (!selectedStation) {
-                    bibSection.classList.add('hidden');
-                    gatesContainer.classList.add('hidden');
-                    timeSection.classList.add('hidden');
-                    bibInput.disabled = true;
-                    timeInput.disabled = true;
-                    stationSelector.disabled = false;
-                    return;
+            confirmationSummary.innerHTML = summaryHtml;
+            confirmationModal.classList.remove('hidden');
+        });
+
+        // Handle DNF Button
+        dnfBtn.addEventListener('click', function() {
+            // Validate Bib Number
+            const bibNumberValue = bibInput.value.trim();
+            if (!/^\d+$/.test(bibNumberValue)) {
+                statusMessage.textContent = 'Error: Bib Number must be a whole number.';
+                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
+                statusMessage.classList.remove('hidden');
+                bibInput.focus();
+                bibInput.select();
+                return;
+            }
+
+            if (!stationSelector.value) {
+                statusMessage.textContent = 'Error: Please select a station first.';
+                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
+                statusMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Build Confirmation Summary for DNF
+            confirmationSummary.innerHTML = '';
+            let summaryHtml = '';
+            summaryHtml += `<p class="text-center text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">${stationSelector.value}</p>`;
+            summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
+            summaryHtml += `<p class="text-4xl text-red-600 dark:text-red-500 font-bold mt-6 text-center">DID NOT FINISH (DNF)</p>`;
+
+            pendingSubmissionData = {
+                station: stationSelector.value,
+                bib: bibInput.value,
+                gates: [],
+                time: 'DNF',
+                isDNF: true
+            };
+
+            confirmationSummary.innerHTML = summaryHtml;
+            confirmationModal.classList.remove('hidden');
+        });
+
+        // Cancel Submission
+        cancelSubmitBtn.addEventListener('click', () => {
+            confirmationModal.classList.add('hidden');
+            pendingSubmissionData = null;
+        });
+
+        // Helper to get query param by name (case-insensitive)
+        function getQueryParamCaseInsensitive(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            for (const key of urlParams.keys()) {
+                if (key.toLowerCase() === name.toLowerCase()) {
+                    return urlParams.get(key);
+                }
+            }
+            return null;
+        }
+
+        // Confirm and Submit Data to Google Form
+        confirmSubmitBtn.addEventListener('click', async () => {
+            if (!pendingSubmissionData) return;
+
+            confirmationModal.classList.add('hidden');
+            submitBtn.disabled = true;
+            dnfBtn.disabled = true;
+            statusMessage.textContent = 'Submitting score...';
+            statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-blue-600 text-white';
+            statusMessage.classList.remove('hidden');
+
+            const formData = new FormData();
+
+            // Station Name entry ID
+            const defaultStationEntryId = 'entry.206263595';
+            const stationEntryId = getQueryParamCaseInsensitive('station_entry') || defaultStationEntryId;
+            formData.append(stationEntryId, pendingSubmissionData.station);
+
+            // Bib Number entry ID
+            const defaultBibEntryId = 'entry.1472856515';
+            const bibEntryId = getQueryParamCaseInsensitive('bib_entry') || defaultBibEntryId;
+            formData.append(bibEntryId, pendingSubmissionData.bib);
+
+            // Penalties / Gates
+            const gatesToShow = stationGateMap[pendingSubmissionData.station] || [];
+            gatesToShow.forEach(gateNum => {
+                const defaultGateEntryId = `entry.gate${gateNum}`;
+                const gateEntryId = getQueryParamCaseInsensitive(`gate${gateNum}_entry`) || defaultGateEntryId;
+                
+                const gatePenalty = pendingSubmissionData.gates.find(g => g.gate === gateNum);
+                const val = gatePenalty ? gatePenalty.value : 'Clean';
+                formData.append(gateEntryId, val);
+            });
+
+            // Time / DNF
+            const defaultTimeEntryId = 'entry.135017997';
+            const timeEntryId = getQueryParamCaseInsensitive('time_entry') || defaultTimeEntryId;
+            if (pendingSubmissionData.time) {
+                formData.append(timeEntryId, pendingSubmissionData.time);
+            }
+
+            try {
+                const response = await fetch(SUBMISSION_URL, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors'
+                });
+
+                statusMessage.textContent = 'Score submitted successfully!';
+                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-emerald-600 text-white';
+
+                // Save to recent submissions
+                const now = new Date();
+                const timestampStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                recentSubmissions.unshift({
+                    timestamp: timestampStr,
+                    data: { ...pendingSubmissionData }
+                });
+
+                // Keep only last 10
+                if (recentSubmissions.length > 10) {
+                    recentSubmissions.pop();
                 }
 
-                // A station is selected, so lock the selector
-                stationSelector.disabled = true;
+                // Reset form fields except station
+                bibInput.value = '';
+                timeInput.value = '';
+                
+                // Reset all radio buttons
+                const radios = gatesContainer.querySelectorAll('input[type=radio]');
+                radios.forEach(radio => {
+                    if (radio.value === 'Clean') {
+                        radio.checked = true;
+                    } else {
+                        radio.checked = false;
+                    }
+                });
 
-                // Show Bib section
-                bibSection.classList.remove('hidden');
-                bibInput.disabled = false;
-                // Focus the bib input
+                // Re-focus Bib Input
                 bibInput.focus();
 
-                // Show/hide gates
-                if (gatesToShow.length > 0) {
-                    gatesContainer.classList.remove('hidden');
-                    // Loop through all possible gates (1-25)
-                    for (let i = 1; i <= 25; i++) {
-                        const gateRow = document.getElementById(`gate-${i}`);
-                        if (!gateRow) continue; // Skip if gate doesn't exist in HTML
-
-                        const inputs = document.querySelectorAll(`input[name="${gateRow.querySelector('input[type=radio]').name}"]`);
-
-                        if (gatesToShow.includes(i)) {
-                            gateRow.classList.remove('hidden');
-                            // Enable radio buttons for this gate
-                            inputs.forEach(input => input.disabled = false);
-                        } else {
-                            gateRow.classList.add('hidden');
-                            // Disable radio buttons for this gate
-                            inputs.forEach(input => input.disabled = true);
-                        }
-                    }
-                } else {
-                    gatesContainer.classList.add('hidden');
-                    // Disable all gate inputs
-                    for (let i = 1; i <= 25; i++) {
-                        const gateRow = document.getElementById(`gate-${i}`);
-                        if (gateRow) {
-                            const inputs = document.querySelectorAll(`input[name="${gateRow.querySelector('input[type=radio]').name}"]`);
-                            inputs.forEach(input => input.disabled = true);
-                        }
-                    }
-                }
-
-                // Show/hide time field
-                if (isFinish) {
-                    timeSection.classList.remove('hidden');
-                    timeInput.disabled = false;
-                    timeInput.required = true;
-                } else {
-                    timeSection.classList.add('hidden');
-                    timeInput.disabled = true;
-                    timeInput.required = false;
-                }
-            }
-
-            /**
-             * Initializes the application, fetches data, and sets up listeners.
-             */
-            async function initializeApp() {
-                loadingState.classList.remove('hidden');
-                loadingError.textContent = '';
-                formContent.classList.add('hidden');
-
-                let metadata = null;
-                while (!metadata) { // Loop until we get metadata (either real or fallback)
-                    metadata = await fetchAndParseMetadata();
-                    if (!metadata) {
-                        // This means a retriable error occurred
-                        // Wait 5 seconds before retrying
-                        await new Promise(resolve => setTimeout(resolve, 5000));
-                    }
-                }
-
-                buildStationUI(metadata);
-
-                // Hide loading state and show form
-                loadingState.classList.add('hidden');
-                formContent.classList.remove('hidden');
-
-                // Set up event listeners
-                stationSelector.addEventListener('change', updateFormVisibility);
-            }
-
-            // Auto-format the time input (Right-to-Left fill)
-            timeInput.addEventListener('input', function(e) {
-                // Remove non-numeric characters
-                let inputDigits = e.target.value.replace(/\D/g, '');
-
-                // Limit to 6 digits (MMSSHH)
-                if (inputDigits.length > 6) {
-                    inputDigits = inputDigits.substring(0, 6);
-                }
-
-                // If empty, clear field
-                if (inputDigits.length === 0) {
-                    e.target.value = '';
-                    return;
-                }
-
-                // Pad with leading zeros to ensure we always have enough for MM:SS.HH
-                // We need 6 digits to extract MM, SS, HH safely
-                const paddedDigits = inputDigits.padStart(6, '0');
-
-                // Slice parts
-                const mm = paddedDigits.substring(0, 2);
-                const ss = paddedDigits.substring(2, 4);
-                const hh = paddedDigits.substring(4, 6);
-
-                // Format: M:SS.HH or MM:SS.HH
-                // parseInt(mm, 10) removes the leading zero from minutes if present (e.g. "02" -> "2")
-                // This results in "2:30.55" instead of "02:30.55"
-                e.target.value = `${parseInt(mm, 10)}:${ss}.${hh}`;
-            });
-
-            // Handle form submission
-            form.addEventListener('submit', async function(event) {
-                event.preventDefault();
-
-                // --- NEW BIB NUMBER VALIDATION ---
-                const bibNumberInput = document.getElementById('bib-number');
-                const bibNumberValue = bibNumberInput.value.trim();
-
-                // Check if it's a non-empty string of digits (integer)
-                if (!/^\d+$/.test(bibNumberValue)) {
-                    statusMessage.textContent = 'Error: Bib Number must be a whole number (e.g., 123).';
-                    statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
-                    statusMessage.classList.remove('hidden');
-                    bibNumberInput.focus();
-                    bibNumberInput.select();
-                    return; // Stop the submission
-                }
-                // --- END NEW VALIDATION ---
-
-                if (!form.checkValidity()) {
-                    form.reportValidity();
-                    statusMessage.textContent = 'Please fill out all required fields.';
-                    statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
-                    statusMessage.classList.remove('hidden');
-                    return;
-                }
-
-                // --- Build Confirmation Summary ---
-                confirmationSummary.innerHTML = ''; // Clear previous summary
-                let summaryHtml = '';
-
-                // Add Station
-                summaryHtml += `<p class="text-center text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">${stationSelector.value}</p>`;
-
-                // Add Bib
-                summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
-
-                let gatesData = [];
-                // Add Gates (if any are visible)
-                const gatesToShow = stationGateMap[stationSelector.value] || [];
-                if (gatesToShow.length > 0) {
-                    summaryHtml += '<ul class="list-none space-y-2 mt-4 text-2xl">';
-                    gatesToShow.forEach(gateNum => {
-                        const gateRow = document.getElementById(`gate-${gateNum}`);
-                        if (!gateRow) return;
-                        const inputs = gateRow.querySelectorAll('input[type=radio]');
-                        let selectedValue = 'Clean'; // Default
-                        for (const input of inputs) {
-                            if (input.checked) {
-                                selectedValue = input.value;
-                                break;
-                            }
-                        }
-                        if (selectedValue !== 'Clean') {
-                            summaryHtml += `<li><strong>Gate ${gateNum}:</strong> <span class="font-bold ${selectedValue === 'Touch' ? 'text-yellow-500' : 'text-red-500'}">${selectedValue}</span></li>`;
-                            gatesData.push({ gate: gateNum, value: selectedValue });
-                        } else {
-                            summaryHtml += `<li>Gate ${gateNum}: ${selectedValue}</li>`;
-                        }
-                    });
-                    summaryHtml += '</ul>';
-                }
-
-                // Add Time (if visible)
-                if (!timeInput.disabled) {
-                    summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> ${timeInput.value}</p>`;
-                }
-
-                pendingSubmissionData = {
-                    station: stationSelector.value,
-                    bib: bibInput.value,
-                    gates: gatesData,
-                    time: !timeInput.disabled ? timeInput.value : null,
-                    isDNF: false
-                };
-
-                confirmationSummary.innerHTML = summaryHtml;
-                confirmationModal.classList.remove('hidden');
-            });
-
-            // Handle DNF Button
-            dnfBtn.addEventListener('click', function() {
-                // Validate Bib Number
-                const bibNumberValue = bibInput.value.trim();
-                if (!/^\d+$/.test(bibNumberValue)) {
-                    statusMessage.textContent = 'Error: Bib Number must be a whole number.';
-                    statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
-                    statusMessage.classList.remove('hidden');
-                    bibInput.focus();
-                    return;
-                }
-
-                // Build Confirmation Summary
-                confirmationSummary.innerHTML = '';
-                let summaryHtml = '';
-                summaryHtml += `<p class="text-center text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">${stationSelector.value}</p>`;
-                summaryHtml += `<p class="text-2xl mb-4"><strong class="font-bold text-gray-800 dark:text-gray-100">Bib:</strong> ${bibInput.value}</p>`;
-                summaryHtml += `<p class="mt-6 text-4xl"><strong class="font-bold text-gray-800 dark:text-gray-100">Time:</strong> <span class="font-bold text-red-600">DNF (999.0)</span></p>`;
-                
-                pendingSubmissionData = {
-                    station: stationSelector.value,
-                    bib: bibInput.value,
-                    gates: [],
-                    time: 'DNF',
-                    isDNF: true
-                };
-
-                confirmationSummary.innerHTML = summaryHtml;
-                currentSubmissionIsDNF = true;
-                confirmationModal.classList.remove('hidden');
-            });
-
-            // Handle Modal Cancel Button
-            cancelSubmitBtn.addEventListener('click', () => {
-                confirmationModal.classList.add('hidden');
-                currentSubmissionIsDNF = false;
-            });
-
-            // Handle Modal Confirm Button (Actual Submit)
-            confirmSubmitBtn.addEventListener('click', async () => {
-                confirmationModal.classList.add('hidden'); // Hide modal
-                statusMessage.textContent = 'Submitting...';
-                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
-                statusMessage.classList.remove('hidden');
-                submitBtn.disabled = true;
-
-                const formData = new FormData(form);
-                const selectedStation = stationSelector.value; // Save station
-
-                // Convert time (MM:SS.HH) to total decimal seconds for the Google Form
-                if (currentSubmissionIsDNF) {
-                    formData.set('entry.873039571', '999.0');
-                    currentSubmissionIsDNF = false; // Reset
-                } else if (isFinishStation[selectedStation] && timeInput.value) {
-                    const [minutesStr, rest] = timeInput.value.split(':');
-                    if (minutesStr && rest) {
-                        const minutes = parseInt(minutesStr, 10);
-                        const seconds = parseFloat(rest);
-                        const totalSeconds = ((minutes * 60) + seconds).toFixed(2);
-                        formData.set('entry.873039571', totalSeconds);
-                    }
-                }
-
-                try {
-                    const response = await fetch(SUBMISSION_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', // Google Forms requires no-cors
-                        body: formData
-                    });
-
-                    // 'no-cors' mode means we can't reliably read the response,
-                    // so we assume success if the request didn't throw a network error/rejection.
-                    statusMessage.textContent = 'Success! Entry recorded.';
-                    statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
-
-                    // Save to recent submissions
-                    if (pendingSubmissionData) {
-                        recentSubmissions.unshift({
-                            data: pendingSubmissionData,
-                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                        });
-                        
-                        // Keep only the last 20 submissions
-                        if (recentSubmissions.length > 20) {
-                            recentSubmissions.pop();
-                        }
-                    }
-
-                    // Reset the form, but keep the station
-                    form.reset();
-                    stationSelector.value = selectedStation; // Restore station
-                    updateFormVisibility(); // Re-apply visibility rules
-
-                    // Focus on Bib Number for next entry
-                    bibInput.focus();
-
-                } catch (error) {
-                    console.error('Error submitting form:', error);
-                    statusMessage.textContent = 'Network error during submission.';
-                    statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
-                } finally {
-                    statusMessage.classList.remove('hidden');
+                setTimeout(() => {
+                    statusMessage.classList.add('hidden');
                     submitBtn.disabled = false;
-                    // Hide success/error message after 3 seconds
-                    setTimeout(() => {
-                        statusMessage.classList.add('hidden');
-                    }, 3000);
-                }
-            });
+                    dnfBtn.disabled = false;
+                }, 3000);
 
-            // Handle Recent Submissions Modal
-            viewSubmissionsBtn.addEventListener('click', () => {
-                recentSubmissionsList.innerHTML = '';
-                if (recentSubmissions.length === 0) {
-                    recentSubmissionsList.innerHTML = '<p class="text-center italic mt-4">No recent submissions.</p>';
-                } else {
-                    recentSubmissions.forEach((sub) => {
-                        let contentHtml = `
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="font-bold text-lg">${sub.data.station}</span>
-                                <span class="text-sm text-gray-500 dark:text-gray-400">${sub.timestamp}</span>
-                            </div>
-                            <div class="mb-1"><strong>Bib:</strong> ${sub.data.bib}</div>
-                        `;
-                        
-                        if (sub.data.gates && sub.data.gates.length > 0) {
-                            contentHtml += `<div class="mb-1"><strong>Penalties:</strong> `;
-                            let penalties = sub.data.gates.map(g => `<span class="${g.value === 'Touch' ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-500'} font-medium">G${g.gate} (${g.value})</span>`);
-                            contentHtml += penalties.join(', ') + `</div>`;
-                        } else if (!sub.data.isDNF && !isFinishStation[sub.data.station] && stationGateMap[sub.data.station] && stationGateMap[sub.data.station].length > 0) {
-                            contentHtml += `<div class="mb-1 text-green-600 dark:text-green-400 font-medium">All Gates Clean</div>`;
-                        }
-
-                        if (sub.data.time) {
-                            contentHtml += `<div class="mb-1"><strong>Time:</strong> <span class="${sub.data.isDNF ? 'text-red-600 dark:text-red-500 font-bold' : ''}">${sub.data.time}</span></div>`;
-                        }
-
-                        const itemHtml = `
-                            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                                ${contentHtml}
-                            </div>
-                        `;
-                        recentSubmissionsList.innerHTML += itemHtml;
-                    });
-                }
-                recentSubmissionsModal.classList.remove('hidden');
-            });
-
-            closeSubmissionsBtn.addEventListener('click', () => {
-                recentSubmissionsModal.classList.add('hidden');
-            });
-
-            // Start the application
-            initializeApp();
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                statusMessage.textContent = 'Failed to submit score. Please check connection and try again.';
+                statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-red-600 text-white';
+                submitBtn.disabled = false;
+                dnfBtn.disabled = false;
+            } finally {
+                pendingSubmissionData = null;
+            }
         });
+
+        // Handle Recent Submissions Modal
+        viewSubmissionsBtn.addEventListener('click', () => {
+            recentSubmissionsList.innerHTML = '';
+            if (recentSubmissions.length === 0) {
+                recentSubmissionsList.innerHTML = '<p class="text-center italic mt-4">No recent submissions.</p>';
+            } else {
+                recentSubmissions.forEach((sub) => {
+                    let contentHtml = `
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-lg">${sub.data.station}</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">${sub.timestamp}</span>
+                        </div>
+                        <div class="mb-1"><strong>Bib:</strong> ${sub.data.bib}</div>
+                    `;
+                    
+                    if (sub.data.gates && sub.data.gates.length > 0) {
+                        contentHtml += `<div class="mb-1"><strong>Penalties:</strong> `;
+                        let penalties = sub.data.gates.map(g => `<span class="${g.value === 'Touch' ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-500'} font-medium">G${g.gate} (${g.value})</span>`);
+                        contentHtml += penalties.join(', ') + `</div>`;
+                    } else if (!sub.data.isDNF && !isFinishStation[sub.data.station] && stationGateMap[sub.data.station] && stationGateMap[sub.data.station].length > 0) {
+                        contentHtml += `<div class="mb-1 text-green-600 dark:text-green-400 font-medium">All Gates Clean</div>`;
+                    }
+
+                    if (sub.data.time) {
+                        contentHtml += `<div class="mb-1"><strong>Time:</strong> <span class="${sub.data.isDNF ? 'text-red-600 dark:text-red-500 font-bold' : ''}">${sub.data.time}</span></div>`;
+                    }
+
+                    const itemHtml = `
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                            ${contentHtml}
+                        </div>
+                    `;
+                    recentSubmissionsList.innerHTML += itemHtml;
+                });
+            }
+            recentSubmissionsModal.classList.remove('hidden');
+        });
+
+        closeSubmissionsBtn.addEventListener('click', () => {
+            recentSubmissionsModal.classList.add('hidden');
+        });
+
+        // Start the application
+        initializeApp();
     </script>
 </body>
 </html>
