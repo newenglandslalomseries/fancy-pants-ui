@@ -70,5 +70,18 @@ Dave\tK1\t`;
             expect(result.sessionA.length).toBe(1);
             expect(result.sessionB.length).toBe(1);
         });
+
+        it('should correctly pair two racers in multiple separate tandem classes', () => {
+            const csvText = 
+`Name\tRace Classes\tTandem Boat Partner(s)
+Alice\tC2 Mix, K2 Mix\tBob, Bob
+Bob\tC2 Mix, K2 Mix\tAlice, Alice`;
+
+            const result = optimizeSessions({ csvText, maxDiff: 1, isSingleSession: false });
+
+            // Ensure Alice and Bob are paired together in both classes
+            expect(result.classBoaters['C2 Mix']).toEqual(['Alice & Bob']);
+            expect(result.classBoaters['K2 Mix']).toEqual(['Alice & Bob']);
+        });
     });
 });
