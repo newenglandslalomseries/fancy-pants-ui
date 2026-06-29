@@ -83,5 +83,45 @@ Bob\tC2 Mix, K2 Mix\tAlice, Alice`;
             expect(result.classBoaters['C2 Mix']).toEqual(['Alice & Bob']);
             expect(result.classBoaters['K2 Mix']).toEqual(['Alice & Bob']);
         });
+
+        it('should throw an error if required headers are missing', () => {
+            const csvText = `Name\tRace Classes\nAlice\tK1`;
+            expect(() => optimizeSessions({ csvText })).toThrow("Could not find required columns");
+        });
+
+        it('should throw an error if there are less than 2 distinct classes', () => {
+            const csvText = `Name\tRace Classes\tTandem Boat Partner(s)\nAlice\tK1\t\nBob\tK1\t`;
+            expect(() => optimizeSessions({ csvText, isSingleSession: false })).toThrow(
+                "Not enough distinct classes found to split into two sessions."
+            );
+        });
+
+        it('should detect mismatched tandem partners', () => {
+            const csvText = 
+`Name\tRace Classes\tTandem Boat Partner(s)
+Alice\tC2 Mix, K1\tBob, 
+Bob\tC2 Mix, K1\tCharlie, `; // Bob is registered with Charlie, but Alice registered with Bob
+
+            const result = optimizeSessions({ csvText, isSingleSession: true });
+            
+            // Charlie is not registered in the Name column
+            expect(result.mismatchedPartners).toContainEqual({
+                partnerName: "Charlie",
+                racerName: "Bob",
+                registeredVersion: undefined
+            });
+        });
+
+        it('should put all classes in Session A in single session mode', () => {
+            const csvText = 
+`Name\tRace Classes\tTandem Boat Partner(s)
+Alice\tK1\t
+Bob\tC1\t`;
+
+            const result = optimizeSessions({ csvText, isSingleSession: true });
+            expect(result.sessionA).toContain("K1");
+            expect(result.sessionA).toContain("C1");
+            expect(result.sessionB).toEqual([]);
+        });
     });
 });
