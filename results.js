@@ -10,7 +10,8 @@ export const MAX_TIME_SAMPLE = 900;
 
 // --- 1. CSV Parser ---
 export function parseCSV(text) {
-    const lines = text.split(/\r?\n/);
+    if (!text || !text.trim()) return { headers: [], rows: [] };
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
     if (lines.length < 1) return { headers: [], rows: [] };
 
     const splitRow = (row) => {

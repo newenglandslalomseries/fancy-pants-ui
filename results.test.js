@@ -21,6 +21,18 @@ describe('results.js unit tests', () => {
                 { 'Bib #': '1', Name: 'John', Class: 'K1', 'Raw Time': '120.5' }
             ]);
         });
+
+        it('should handle quoted values containing commas', () => {
+            const csv = 'Bib #,Name,Class,Raw Time\n1,"Doe, John",K1,120.5';
+            const { rows } = parseCSV(csv);
+            expect(rows[0]['Name']).toBe('Doe, John');
+        });
+
+        it('should handle empty input', () => {
+            const { headers, rows } = parseCSV('');
+            expect(headers).toEqual([]);
+            expect(rows).toEqual([]);
+        });
     });
 
     describe('parseToNumeric', () => {
@@ -32,8 +44,16 @@ describe('results.js unit tests', () => {
             expect(parseToNumeric('1:02:30')).toBe(3750);
         });
 
+        it('should parse hours, minutes, seconds and decimals (HH:MM:SS.xx)', () => {
+            expect(parseToNumeric('1:02:30.45')).toBe(3750.45);
+        });
+
         it('should parse simple float strings', () => {
             expect(parseToNumeric('123.45')).toBe(123.45);
+        });
+
+        it('should return number if input is already a number', () => {
+            expect(parseToNumeric(120.5)).toBe(120.5);
         });
 
         it('should return null for invalid inputs', () => {
@@ -63,6 +83,17 @@ describe('results.js unit tests', () => {
             const { allData, errorData } = processResultsData(rows);
             expect(allData.map(r => r['Bib #'])).toEqual(['1', '2']);
             expect(errorData.map(r => r['Bib #'])).toEqual(['2', '3']);
+        });
+
+        it('should handle rows with empty or missing times', () => {
+            const rows = [
+                { 'Bib #': '1', 'Run #': '1', 'Raw Time': '' },
+                { 'Bib #': '2', 'Run #': '1', 'Raw Time': '120.5' }
+            ];
+            const { allData, errorData } = processResultsData(rows);
+            // Empty time should be treated as null, which is allowed in allData but not an error
+            expect(allData.map(r => r['Bib #'])).toEqual(['1', '2']);
+            expect(errorData).toEqual([]);
         });
     });
 });
