@@ -114,16 +114,6 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
-                    <div class="mt-2 flex flex-wrap items-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="standingsView" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                            <label for="standingsView" class="text-sm text-gray-600 cursor-pointer">Standings view</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="randomizeClassOrder" onchange="updateDisplay()" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
-                            <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Randomize class order</label>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Racer Filter Group -->
@@ -146,10 +136,26 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
-                    <div id="tandemCheckboxGroup" class="mt-2 flex items-center gap-2 hidden">
-                        <input type="checkbox" id="showTandem" onchange="handleSelectionChange()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                        <label for="showTandem" class="text-sm text-gray-600 cursor-pointer">Also show tandem results</label>
-                    </div>
+                </div>
+            </div>
+
+            <!-- Checkboxes Row (Full Width) -->
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 pt-3 border-t border-gray-100">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="standingsView" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="standingsView" class="text-sm text-gray-600 cursor-pointer">Standings view</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="randomizeClassOrder" onchange="updateDisplay()" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+                    <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Randomize class order</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="showStationAnomalies" onchange="handleShowStationAnomaliesChange()" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 peer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <label for="showStationAnomalies" class="text-sm text-gray-600 cursor-pointer peer-disabled:opacity-50 peer-disabled:cursor-not-allowed">Show station anomalies</label>
+                </div>
+                <div id="tandemCheckboxGroup" class="flex items-center gap-2 hidden">
+                    <input type="checkbox" id="showTandem" onchange="handleSelectionChange()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="showTandem" class="text-sm text-gray-600 cursor-pointer">Also show tandem results</label>
                 </div>
             </div>
         </div>
@@ -234,6 +240,7 @@
             parseToNumeric, 
             formatBytes, 
             processResultsData,
+            checkStationAnomalies,
             COL_BIB,
             COL_NAME,
             COL_CLASS,
@@ -286,6 +293,8 @@
         let gid = '';
         let allData = [];
         let errorData = [];
+        let anomalies = [];
+        let allRacerRows = [];
         let statsChart = null;
 
         async function init() {
@@ -357,6 +366,18 @@
             document.getElementById('classSelect').value = "";
             allData = [];
             errorData = [];
+            anomalies = [];
+            allRacerRows = [];
+
+            const showAnomaliesCheckbox = document.getElementById('showStationAnomalies');
+            if (showAnomaliesCheckbox) {
+                if (race && race.raw_results_url) {
+                    showAnomaliesCheckbox.disabled = false;
+                } else {
+                    showAnomaliesCheckbox.disabled = true;
+                    showAnomaliesCheckbox.checked = false;
+                }
+            }
 
             preloadData();
         }
@@ -421,9 +442,37 @@
                     throw new Error(`Critical column "${COL_BIB}" not found.`);
                 }
 
+                allRacerRows = rows;
+
                 const processed = processResultsData(rows);
                 allData = processed.allData;
                 errorData = processed.errorData;
+                anomalies = [];
+
+                // 2. Fetch raw results if raw_results_url is specified and checkbox is checked
+                const showAnomaliesChecked = document.getElementById('showStationAnomalies') && document.getElementById('showStationAnomalies').checked;
+                const raceIndex = document.getElementById('raceSelect').value;
+                const race = currentRaces[raceIndex];
+                if (showAnomaliesChecked && race && race.raw_results_url) {
+                    const rawUrlMatch = race.raw_results_url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    const rawSheetId = rawUrlMatch ? rawUrlMatch[1] : '';
+                    const rawGidMatch = race.raw_results_url.match(/[?&]gid=([0-9]+)/);
+                    const rawGid = rawGidMatch ? rawGidMatch[1] : '0';
+                    
+                    if (rawSheetId && rawGid) {
+                        try {
+                            const rawUrl = `https://docs.google.com/spreadsheets/d/${rawSheetId}/export?format=csv&gid=${rawGid}&t=${new Date().getTime()}`;
+                            const rawResponse = await fetch(rawUrl);
+                            if (rawResponse.ok) {
+                                const rawCsvText = await rawResponse.text();
+                                const parsedRaw = parseCSV(rawCsvText);
+                                anomalies = checkStationAnomalies(parsedRaw.rows);
+                            }
+                        } catch (rawErr) {
+                            console.error('Failed to fetch raw results for anomaly check:', rawErr);
+                        }
+                    }
+                }
 
                 populateClassSelect(allData);
                 classSelect.disabled = false;
@@ -437,6 +486,7 @@
                 showMessage(error.message, 'text-red-500');
                 allData = [];
                 errorData = [];
+                anomalies = [];
                 emptyState.classList.remove('hidden');
                 // Hide table/results on failure
                 document.getElementById('resultsContainer').innerHTML = '';
@@ -611,9 +661,22 @@
             filteredResults = allData.filter(row => classFilter(row) && racerFilter(row) && rankFilter(row));
             const filteredErrors = errorData.filter(row => classFilter(row) && racerFilter(row));
 
+            const showAnomaliesChecked = document.getElementById('showStationAnomalies') && document.getElementById('showStationAnomalies').checked;
+            let filteredAnomalies = showAnomaliesChecked ? anomalies : [];
+            if (showAnomaliesChecked) {
+                if (nameValue) {
+                    const racerBibs = [...new Set(allData.filter(r => r[COL_NAME] === nameValue).map(r => (r['Bib #'] || '').toString().trim()))];
+                    filteredAnomalies = filteredAnomalies.filter(a => racerBibs.includes(a.bib));
+                }
+                if (classValue && classValue !== '*COMBINE*') {
+                    const classBibs = [...new Set(allData.filter(r => r[COL_CLASS] === classValue).map(r => (r['Bib #'] || '').toString().trim()))];
+                    filteredAnomalies = filteredAnomalies.filter(a => classBibs.includes(a.bib));
+                }
+            }
+
             updateCharts();
             renderResults(filteredResults);
-            renderErrors(filteredErrors);
+            renderErrors(filteredErrors, filteredAnomalies);
         }
 
         function updateCharts() {
@@ -839,11 +902,11 @@
             container.innerHTML = tableHtml;
         }
 
-        function renderErrors(errorRows) {
+        function renderErrors(errorRows, anomaliesList = []) {
             const container = document.getElementById('errorsContainer');
             if (!container) return;
             
-            if (!errorRows || errorRows.length === 0) {
+            if ((!errorRows || errorRows.length === 0) && (!anomaliesList || anomaliesList.length === 0)) {
                 container.classList.add('hidden');
                 container.innerHTML = '';
                 return;
@@ -851,8 +914,11 @@
 
             container.classList.remove('hidden');
 
-            let tableHtml = `
-                <details class="bg-red-50 rounded-xl shadow-md border border-red-200 group">
+            let html = '';
+
+            if (errorRows && errorRows.length > 0) {
+                html += `
+                <details class="bg-red-50 rounded-xl shadow-md border border-red-200 group mb-4" open>
                     <summary class="text-lg font-bold text-red-800 p-6 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden">
                         <div class="flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 flex-shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -873,33 +939,59 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-red-100">
-            `;
-
-            errorRows.forEach(row => {
-                const bib = row['Bib #'] || '—';
-                const name = row['Name'] || '—';
-                const cls = row[COL_CLASS] || '—';
-                const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
-                const timeStr = row[COL_TIME] || '—';
-
-                tableHtml += `
-                    <tr class="hover:bg-red-100 transition-colors">
-                        <td class="px-3 py-2 font-bold text-red-900">${bib}</td>
-                        <td class="px-3 py-2 text-red-800 font-semibold">${name}</td>
-                        <td class="px-3 py-2 text-red-800">${cls}</td>
-                        <td class="px-3 py-2 font-bold text-red-800">${runNum}</td>
-                        <td class="px-3 py-2 text-red-800">${timeStr}</td>
-                    </tr>
-                `;
-            });
-
-            tableHtml += `
+                                ${errorRows.map(row => {
+                                    const bib = row['Bib #'] || '—';
+                                    const name = row['Name'] || '—';
+                                    const cls = row[COL_CLASS] || '—';
+                                    const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
+                                    const timeStr = row[COL_TIME] || '—';
+                                    return `
+                                        <tr class="hover:bg-red-100 transition-colors">
+                                            <td class="px-3 py-2 font-bold text-red-900">${bib}</td>
+                                            <td class="px-3 py-2 text-red-800 font-semibold">${name}</td>
+                                            <td class="px-3 py-2 text-red-800">${cls}</td>
+                                            <td class="px-3 py-2 font-bold text-red-800">${runNum}</td>
+                                            <td class="px-3 py-2 text-red-800">${timeStr}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>
                 </details>
-            `;
-            container.innerHTML = tableHtml;
+                `;
+            }
+
+            if (anomaliesList && anomaliesList.length > 0) {
+                html += `
+                <details class="bg-amber-50 rounded-xl shadow-md border border-amber-200 group" open>
+                    <summary class="text-lg font-bold text-amber-800 p-6 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600 flex-shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <span>Station Anomalies</span>
+                            <span class="ml-2 bg-amber-200 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold">${anomaliesList.length}</span>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600 transition-transform duration-200 group-open:rotate-180"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="px-6 pb-6 pt-0">
+                        <ul class="list-disc pl-5 space-y-2 text-amber-900 font-medium">
+                            ${anomaliesList.map(a => {
+                                const matched = allRacerRows.find(r => (r[COL_BIB] || '').toString().trim() === a.bib);
+                                let displayMessage = a.message;
+                                if (matched) {
+                                    const name = matched[COL_NAME] || 'Unknown Racer';
+                                    const cls = matched[COL_CLASS] || 'Unknown Class';
+                                    displayMessage = a.message.replace(`Bib ${a.bib}`, `Bib ${a.bib} (${name} - ${cls})`);
+                                }
+                                return `<li>${displayMessage}</li>`;
+                            }).join('')}
+                        </ul>
+                    </div>
+                </details>
+                `;
+            }
+
+            container.innerHTML = html;
         }
 
         function showMessage(text, colorClass) {
@@ -907,6 +999,39 @@
             statusMessage.innerText = text;
             statusMessage.className = `mt-2 text-sm font-medium ${colorClass}`;
             statusMessage.classList.remove('hidden');
+        }
+
+        async function handleShowStationAnomaliesChange() {
+            const isChecked = document.getElementById('showStationAnomalies').checked;
+            if (isChecked && anomalies.length === 0) {
+                const loading = document.getElementById('loading');
+                loading.classList.remove('hidden');
+                try {
+                    const raceIndex = document.getElementById('raceSelect').value;
+                    const race = currentRaces[raceIndex];
+                    if (race && race.raw_results_url) {
+                        const rawUrlMatch = race.raw_results_url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                        const rawSheetId = rawUrlMatch ? rawUrlMatch[1] : '';
+                        const rawGidMatch = race.raw_results_url.match(/[?&]gid=([0-9]+)/);
+                        const rawGid = rawGidMatch ? rawGidMatch[1] : '0';
+                        
+                        if (rawSheetId && rawGid) {
+                            const rawUrl = `https://docs.google.com/spreadsheets/d/${rawSheetId}/export?format=csv&gid=${rawGid}&t=${new Date().getTime()}`;
+                            const rawResponse = await fetch(rawUrl);
+                            if (rawResponse.ok) {
+                                const rawCsvText = await rawResponse.text();
+                                const parsedRaw = parseCSV(rawCsvText);
+                                anomalies = checkStationAnomalies(parsedRaw.rows);
+                            }
+                        }
+                    }
+                } catch (rawErr) {
+                    console.error('Failed to fetch raw results for anomaly check:', rawErr);
+                } finally {
+                    loading.classList.add('hidden');
+                }
+            }
+            updateDisplay();
         }
 
         // Expose functions called by HTML event attributes to window
@@ -919,6 +1044,7 @@
         window.filterByName = filterByName;
         window.filterByClass = filterByClass;
         window.updateDisplay = updateDisplay;
+        window.handleShowStationAnomaliesChange = handleShowStationAnomaliesChange;
 
         window.addEventListener('DOMContentLoaded', init);
     </script>
