@@ -228,7 +228,21 @@
         <p id="dataSizeInfo" class="truncate mt-1"></p>
     </footer>
 
-    <script>
+    <script type="module">
+        import { 
+            parseCSV, 
+            parseToNumeric, 
+            formatBytes, 
+            processResultsData,
+            COL_BIB,
+            COL_NAME,
+            COL_CLASS,
+            COL_TIME,
+            COL_SCORE,
+            MIN_TIME_SAMPLE,
+            MAX_TIME_SAMPLE
+        } from './results.js';
+
         // Fallback Configuration
         const FALLBACK_RACES = {
             "races": [
@@ -239,12 +253,6 @@
                 }
             ]
         };
-
-        const COL_BIB = 'Bib #';
-        const COL_NAME = 'Name';
-        const COL_CLASS = 'Class';
-        const COL_TIME = 'Raw Time';
-        const COL_SCORE = 'Total Score';
 
         // Exclusions for dynamic columns
         const EXCLUDE_COLS = [
@@ -271,8 +279,6 @@
         };
 
         const BUCKET_SIZE = 5;
-        const MIN_TIME_SAMPLE = 10;
-        const MAX_TIME_SAMPLE = 900;
 
         // State
         let currentRaces = [];
@@ -342,7 +348,7 @@
             const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
             sheetId = idMatch ? idMatch[1] : '';
 
-            const gidMatch = url.match(/[?&#]gid=([0-9]+)/);
+            const gidMatch = url.match(/[?&]gid=([0-9]+)/);
             gid = gidMatch ? gidMatch[1] : '0';
 
             document.getElementById('sourceInfo').innerText = `Sheet ID: ${sheetId} | GID: ${gid}`;
@@ -353,56 +359,6 @@
             errorData = [];
 
             preloadData();
-        }
-
-        function parseCSV(text) {
-            const lines = text.split(/\r?\n/);
-            if (lines.length < 1) return { headers: [], rows: [] };
-
-            const splitRow = (row) => {
-                const result = [];
-                let current = '';
-                let inQuotes = false;
-                for (let i = 0; i < row.length; i++) {
-                    const char = row[i];
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        result.push(current.trim());
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                result.push(current.trim());
-                return result.map(v => v.replace(/^"|"$/g, ''));
-            };
-
-            // Detect if headers are in row 1 or 2 by looking for "Bib #"
-            let headerIdx = 1; // Default to row 2
-            if (lines[0]) {
-                const firstRowCols = splitRow(lines[0]);
-                if (firstRowCols.includes(COL_BIB)) {
-                    headerIdx = 0;
-                }
-            }
-
-            const headers = splitRow(lines[headerIdx]);
-            const results = [];
-
-            // Start data processing from the row immediately after headers
-            for (let i = headerIdx + 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const values = splitRow(lines[i]);
-                const obj = {};
-                headers.forEach((header, index) => {
-                    if (header) {
-                        obj[header] = values[index] || '';
-                    }
-                });
-                results.push(obj);
-            }
-            return { headers, rows: results };
         }
 
         async function refreshData() {
@@ -465,16 +421,9 @@
                     throw new Error(`Critical column "${COL_BIB}" not found.`);
                 }
 
-                errorData = rows.filter(row => {
-                    const runNum = (row['Run #'] || row['Run'] || '1').toString().trim();
-                    const time = parseToNumeric(row[COL_TIME]);
-                    return (runNum !== '1' && runNum !== '2') || time === 0;
-                });
-
-                allData = rows.filter(row => {
-                    const time = parseToNumeric(row[COL_TIME]);
-                    return time === null || (time >= MIN_TIME_SAMPLE && time <= MAX_TIME_SAMPLE);
-                });
+                const processed = processResultsData(rows);
+                allData = processed.allData;
+                errorData = processed.errorData;
 
                 populateClassSelect(allData);
                 classSelect.disabled = false;
@@ -665,27 +614,6 @@
             updateCharts();
             renderResults(filteredResults);
             renderErrors(filteredErrors);
-        }
-
-        function parseToNumeric(val) {
-            if (!val) return null;
-            if (typeof val === 'number') return val;
-            if (typeof val === 'string' && val.includes(':')) {
-                const parts = val.split(':').map(Number);
-                if (parts.length === 2) return (parts[0] * 60) + parts[1];
-                if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
-            }
-            const num = parseFloat(val);
-            return isNaN(num) ? null : num;
-        }
-
-        function formatBytes(bytes, decimals = 2) {
-            if (!+bytes) return '0 B';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
         }
 
         function updateCharts() {
@@ -890,7 +818,7 @@
                             ${isCombined ? `<td class="px-3 py-2 text-gray-600 font-medium whitespace-nowrap cursor-pointer hover:text-blue-600 underline decoration-transparent hover:decoration-blue-600 transition-colors" onclick="filterByClass('${safeRowClass}')" title="Filter to this class">${rowClass}</td>` : ''}
                             <td class="px-3 py-2 font-bold text-blue-600">#${runNum}</td>
                             ${dynamicKeys.map(key => {
-                                let val = row[key] || '—';
+                                var val = row[key] || '—';
                                 if (key === 'Gates Touched' || key === 'Gates Fiftied') {
                                     val = val.toString().replace(/Gate\s*#/gi, '').trim() || '0';
                                 }
@@ -981,7 +909,18 @@
             statusMessage.classList.remove('hidden');
         }
 
-        window.onload = init;
+        // Expose functions called by HTML event attributes to window
+        window.refreshData = refreshData;
+        window.handleRaceChange = handleRaceChange;
+        window.handleClassChange = handleClassChange;
+        window.handleSelectionChange = handleSelectionChange;
+        window.clearClassFilter = clearClassFilter;
+        window.clearRacerFilter = clearRacerFilter;
+        window.filterByName = filterByName;
+        window.filterByClass = filterByClass;
+        window.updateDisplay = updateDisplay;
+
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
