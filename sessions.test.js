@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { parseTSV, parseMissingBibs, assignWork, optimizeSessions } from './sessions.js';
+import { describe, it, expect, vi } from 'vitest';
+import { parseTSV, parseMissingBibs, assignWork, optimizeSessions, loadStoredAssignments, saveStoredAssignments, resetStoredAssignments } from './sessions.js';
+
 
 describe('sessions.js unit tests', () => {
     describe('parseTSV', () => {
@@ -135,6 +136,95 @@ Bob\tC1\t`;
             expect(result.sessionA).toContain("K1");
             expect(result.sessionA).toContain("C1");
             expect(result.sessionB).toEqual([]);
+        });
+    });
+
+    describe('Work Assignment Storage Logic', () => {
+        describe('loadStoredAssignments', () => {
+            it('should return null if stored is empty or falsy', () => {
+                expect(loadStoredAssignments(null, '2026-07-01')).toBeNull();
+                expect(loadStoredAssignments('', '2026-07-01')).toBeNull();
+            });
+
+            it('should return the assignments for the specified race date', () => {
+                const stored = JSON.stringify({
+                    '2026-07-01': [{ name: 'Alice', assignment: 'Finish' }],
+                    '2026-07-02': [{ name: 'Bob', assignment: 'Station A' }]
+                });
+                expect(loadStoredAssignments(stored, '2026-07-01')).toEqual([
+                    { name: 'Alice', assignment: 'Finish' }
+                ]);
+            });
+
+            it('should return null if the race date is not found', () => {
+                const stored = JSON.stringify({
+                    '2026-07-01': [{ name: 'Alice', assignment: 'Finish' }]
+                });
+                expect(loadStoredAssignments(stored, '2026-07-02')).toBeNull();
+            });
+
+            it('should return null and log an error if the stored string is invalid JSON', () => {
+                const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+                expect(loadStoredAssignments('{invalid json}', '2026-07-01')).toBeNull();
+                expect(consoleSpy).toHaveBeenCalled();
+                consoleSpy.mockRestore();
+            });
+        });
+
+        describe('saveStoredAssignments', () => {
+            it('should create a new object string if stored is empty/falsy', () => {
+                const assignments = [{ name: 'Alice', assignment: 'Finish' }];
+                const result = saveStoredAssignments('', '2026-07-01', assignments);
+                expect(JSON.parse(result)).toEqual({
+                    '2026-07-01': assignments
+                });
+            });
+
+            it('should update an existing stored object string with the new assignments', () => {
+                const initialStored = JSON.stringify({
+                    '2026-07-01': [{ name: 'Bob', assignment: 'Station A' }]
+                });
+                const assignments = [{ name: 'Alice', assignment: 'Finish' }];
+                const result = saveStoredAssignments(initialStored, '2026-07-02', assignments);
+                expect(JSON.parse(result)).toEqual({
+                    '2026-07-01': [{ name: 'Bob', assignment: 'Station A' }],
+                    '2026-07-02': assignments
+                });
+            });
+
+            it('should return original stored string and log an error if JSON parsing fails', () => {
+                const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+                const result = saveStoredAssignments('{invalid json}', '2026-07-01', []);
+                expect(result).toBe('{invalid json}');
+                expect(consoleSpy).toHaveBeenCalled();
+                consoleSpy.mockRestore();
+            });
+        });
+
+        describe('resetStoredAssignments', () => {
+            it('should return empty object string if stored is empty or falsy', () => {
+                expect(resetStoredAssignments(null, '2026-07-01')).toBe(JSON.stringify({}));
+                expect(resetStoredAssignments('', '2026-07-01')).toBe(JSON.stringify({}));
+            });
+
+            it('should remove the entry for the specified race date', () => {
+                const stored = JSON.stringify({
+                    '2026-07-01': [{ name: 'Alice', assignment: 'Finish' }],
+                    '2026-07-02': [{ name: 'Bob', assignment: 'Station A' }]
+                });
+                const result = resetStoredAssignments(stored, '2026-07-01');
+                expect(JSON.parse(result)).toEqual({
+                    '2026-07-02': [{ name: 'Bob', assignment: 'Station A' }]
+                });
+            });
+
+            it('should return the original stored string and log an error if JSON parsing fails', () => {
+                const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+                const result = resetStoredAssignments('{invalid json}', '2026-07-01');
+                expect(result).toBe('{invalid json}');
+                expect(consoleSpy).toHaveBeenCalled();
+                consoleSpy.mockRestore();
+            });
         });
     });
 });
