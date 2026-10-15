@@ -116,7 +116,7 @@
                     </div>
 
                     <div class="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-2 rounded-lg">
-                        <input type="checkbox" id="singleSession" onchange="processData()"
+                        <input type="checkbox" id="singleSession" onchange="handleSingleSessionToggle()"
                             class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 ml-1">
                         <label for="singleSession"
                             class="text-sm font-medium text-gray-700 whitespace-nowrap mr-1">Single session only</label>
@@ -226,7 +226,7 @@
     </div>
 
     <script type="module">
-        import { parseMissingBibs, assignWork, optimizeSessions, loadStoredAssignments, saveStoredAssignments, resetStoredAssignments } from './sessions.js';
+        import { parseMissingBibs, assignWork, noWorkList, optimizeSessions, loadStoredAssignments, saveStoredAssignments, resetStoredAssignments } from './sessions.js';
 
         // State
         let currentRaces = [];
@@ -433,8 +433,25 @@
                 window.userWorkAssignments = {};
             }
             const isSingleSession = document.getElementById('singleSession')?.checked;
-            const assignmentsA = assignWork(onlyA, isSingleSession);
-            const assignmentsB = assignWork(onlyB, isSingleSession);
+
+            // Auto-detect and reset corrupted stored assignments (>3 on any station in either session)
+            const checkOverassigned = (racers) => {
+                const counts = {};
+                for (const name of racers) {
+                    const assign = window.userWorkAssignments[name.toLowerCase().trim()];
+                    if (assign) {
+                        counts[assign] = (counts[assign] || 0) + 1;
+                        if (counts[assign] > 3) return true;
+                    }
+                }
+                return false;
+            };
+            if (checkOverassigned(onlyA) || checkOverassigned(onlyB)) {
+                window.userWorkAssignments = {};
+            }
+
+            const assignmentsA = assignWork(onlyA, isSingleSession, noWorkList);
+            const assignmentsB = assignWork(onlyB, isSingleSession, noWorkList);
             let hasNewAssignments = false;
             assignmentsA.forEach(item => {
                 const key = item.name.toLowerCase().trim();
@@ -795,6 +812,10 @@
             await preloadData();
         }
 
+        function handleSingleSessionToggle() {
+            resetWorkAssignments();
+        }
+
         // Expose functions called by HTML event attributes to window
         window.processData = processData;
         window.handleRaceChange = handleRaceChange;
@@ -802,6 +823,7 @@
         window.handleWorkAssignmentChange = handleWorkAssignmentChange;
         window.copyRegistrationData = copyRegistrationData;
         window.resetWorkAssignments = resetWorkAssignments;
+        window.handleSingleSessionToggle = handleSingleSessionToggle;
 
         window.addEventListener('DOMContentLoaded', init);
     </script>

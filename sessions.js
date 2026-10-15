@@ -1,3 +1,22 @@
+// --- 0. No-Work List ---
+// Racers who should not be given work assignments if possible.
+// Ordered by non-work priority, low to high: when additional workers are needed,
+// the first person on the list is assigned first, then the second, etc.
+export const noWorkList = [
+    "Barry Jaspan",
+    "Glenn Pratt",
+    "Tanya Renner",
+    "Tatiana Renner",
+    "Sandy Pratt",
+    "Clayton Cole",
+    "Klaus Renner",
+    "Austin Huck",
+    "Amy Hunt",
+    "Sonny Hunt",
+    "Michael Cook",
+    "Sergei Popov",
+];
+
 // --- 1. Basic TSV Parser ---
 export function parseTSV(text) {
     let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
@@ -127,59 +146,73 @@ export function parseMissingBibs(val) {
 }
 
 // --- 4. Work Assignment Logic (Pure Function) ---
-export function assignWork(racers, isSingleSession = false) {
+// noWork: optional array of racer names who should be excluded from work assignments
+// when there are enough other racers to fill every station with 3 people.
+// When additional workers are needed, names from noWork are used in list order (index 0 first).
+export function assignWork(racers, isSingleSession = false, noWork = noWorkList) {
     const result = [];
     const N = racers.length;
     if (N === 0) return result;
-    
-    let assignments = [];
-    
-    if (isSingleSession) {
-        const stations = ["Finish", "Station A", "Station B", "Station C", "Station D"];
-        const stationCounts = [0, 0, 0, 0, 0];
-        for (let i = 0; i < N; i++) {
-            stationCounts[i % 5]++;
+
+    // Partition racers into those available for work and those on the no-work list.
+    // The no-work set is matched case-insensitively for robustness.
+    const noWorkSet = new Set((noWork || []).map(n => n.toLowerCase().trim()));
+    const workers = racers.filter(r => !noWorkSet.has(r.toLowerCase().trim()));
+
+    // Preserve no-work list ordering (priority) for the fallback pool.
+    const noWorkPool = [];
+    for (const n of (noWork || [])) {
+        for (const r of racers) {
+            if (r.toLowerCase().trim() === n.toLowerCase().trim() && !noWorkPool.includes(r)) {
+                noWorkPool.push(r);
+            }
         }
-        for (let sIdx = 0; sIdx < 5; sIdx++) {
+    }
+
+    // Both single session and two-session mode follow the same station staffing rules:
+    // Up to 3 on Finish (most important).
+    // Up to 3 each on Station A, Station B, Station C, Station D (up to 12 total across the 4 stations).
+    // Total maximum assignments = 15.
+    // Any remaining racers get "" (unassigned).
+    const orderedRacers = [...workers, ...noWorkPool];
+    const reorderedN = orderedRacers.length;
+
+    let assignments = [];
+
+    const numFinish = Math.min(reorderedN, 3);
+    for (let i = 0; i < numFinish; i++) {
+        assignments.push("Finish");
+    }
+
+    const remaining = reorderedN - numFinish;
+    const stations = ["Station A", "Station B", "Station C", "Station D"];
+
+    if (remaining > 0) {
+        const numStationSlots = Math.min(remaining, 12);
+        const stationCounts = [0, 0, 0, 0];
+        for (let i = 0; i < numStationSlots; i++) {
+            stationCounts[i % 4]++;
+        }
+
+        for (let sIdx = 0; sIdx < 4; sIdx++) {
             for (let j = 0; j < stationCounts[sIdx]; j++) {
                 assignments.push(stations[sIdx]);
             }
         }
-    } else {
-        const numFinish = Math.min(N, 3);
-        for (let i = 0; i < numFinish; i++) {
-            assignments.push("Finish");
-        }
-        
-        const remaining = N - numFinish;
-        const stations = ["Station A", "Station B", "Station C", "Station D"];
-        
-        if (remaining > 0) {
-            const numStations = Math.min(remaining, 12);
-            const stationCounts = [0, 0, 0, 0];
-            for (let i = 0; i < numStations; i++) {
-                stationCounts[i % 4]++;
-            }
-            
-            for (let sIdx = 0; sIdx < 4; sIdx++) {
-                for (let j = 0; j < stationCounts[sIdx]; j++) {
-                    assignments.push(stations[sIdx]);
-                }
-            }
-        }
-        
-        while (assignments.length < N) {
-            assignments.push("");
-        }
     }
-    
-    for (let i = 0; i < N; i++) {
+
+    while (assignments.length < reorderedN) {
+        assignments.push("");
+    }
+
+    // Build result in the reordered sequence (workers first, then no-work people in priority order).
+    for (let i = 0; i < reorderedN; i++) {
         result.push({
-            name: racers[i],
+            name: orderedRacers[i],
             assignment: assignments[i]
         });
     }
-    
+
     return result;
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseTSV, parseMissingBibs, assignWork, optimizeSessions, loadStoredAssignments, saveStoredAssignments, resetStoredAssignments } from './sessions.js';
+import { parseTSV, parseMissingBibs, assignWork, noWorkList, optimizeSessions, loadStoredAssignments, saveStoredAssignments, resetStoredAssignments } from './sessions.js';
 
 
 describe('sessions.js unit tests', () => {
@@ -28,16 +28,16 @@ describe('sessions.js unit tests', () => {
     });
 
     describe('assignWork', () => {
-        it('should assign work for single session mode', () => {
+        it('should assign work for single session mode with Finish prioritized up to three', () => {
             const racers = ["Racer 1", "Racer 2", "Racer 3", "Racer 4", "Racer 5", "Racer 6"];
-            const result = assignWork(racers, true);
+            const result = assignWork(racers, true, []);
             expect(result).toEqual([
                 { name: "Racer 1", assignment: "Finish" },
                 { name: "Racer 2", assignment: "Finish" },
-                { name: "Racer 3", assignment: "Station A" },
-                { name: "Racer 4", assignment: "Station B" },
-                { name: "Racer 5", assignment: "Station C" },
-                { name: "Racer 6", assignment: "Station D" }
+                { name: "Racer 3", assignment: "Finish" },
+                { name: "Racer 4", assignment: "Station A" },
+                { name: "Racer 5", assignment: "Station B" },
+                { name: "Racer 6", assignment: "Station C" }
             ]);
         });
 
@@ -51,6 +51,159 @@ describe('sessions.js unit tests', () => {
                 { name: "Racer 4", assignment: "Station A" },
                 { name: "Racer 5", assignment: "Station B" }
             ]);
+        });
+    });
+
+    describe('noWorkList', () => {
+        it('should include Amy Hunt and Sonny Hunt', () => {
+            expect(noWorkList).toContain("Amy Hunt");
+            expect(noWorkList).toContain("Sonny Hunt");
+        });
+
+        it('should be an ordered array of strings', () => {
+            expect(Array.isArray(noWorkList)).toBe(true);
+            expect(noWorkList.every(n => typeof n === 'string')).toBe(true);
+        });
+    });
+
+    describe('assignWork with noWork list', () => {
+        it('should exclude no-work racers when enough workers exist to fill all stations (double session)', () => {
+            // 15 workers fills all 5 stations × 3 slots; Amy and Sonny should get "" assignments.
+            const workers = Array.from({ length: 15 }, (_, i) => `Worker ${i + 1}`);
+            const racers = [...workers, "Amy Hunt", "Sonny Hunt"];
+            const result = assignWork(racers, false, ["Amy Hunt", "Sonny Hunt"]);
+
+            const amyResult = result.find(r => r.name === "Amy Hunt");
+            const sonnyResult = result.find(r => r.name === "Sonny Hunt");
+            expect(amyResult.assignment).toBe("");
+            expect(sonnyResult.assignment).toBe("");
+
+            // All 15 workers should have a real assignment.
+            const workerResults = result.filter(r => r.name.startsWith("Worker"));
+            expect(workerResults.every(r => r.assignment !== "")).toBe(true);
+        });
+
+        it('should include Amy Hunt before Sonny Hunt when workers are insufficient (double session)', () => {
+            // Only 14 workers — one slot short; Amy (index 0 in list) should be pulled in.
+            const workers = Array.from({ length: 14 }, (_, i) => `Worker ${i + 1}`);
+            const racers = [...workers, "Amy Hunt", "Sonny Hunt"];
+            const result = assignWork(racers, false, ["Amy Hunt", "Sonny Hunt"]);
+
+            const amyResult = result.find(r => r.name === "Amy Hunt");
+            const sonnyResult = result.find(r => r.name === "Sonny Hunt");
+            expect(amyResult.assignment).not.toBe("");
+            expect(sonnyResult.assignment).toBe("");
+        });
+
+        it('should include both Amy and Sonny when significantly short on workers (double session)', () => {
+            const racers = ["Worker 1", "Worker 2", "Amy Hunt", "Sonny Hunt"];
+            const result = assignWork(racers, false, ["Amy Hunt", "Sonny Hunt"]);
+
+            const amyResult = result.find(r => r.name === "Amy Hunt");
+            const sonnyResult = result.find(r => r.name === "Sonny Hunt");
+            expect(amyResult.assignment).not.toBe("");
+            expect(sonnyResult.assignment).not.toBe("");
+        });
+
+        it('should behave identically to original when noWork is not provided', () => {
+            const racers = ["Racer 1", "Racer 2", "Racer 3", "Racer 4", "Racer 5"];
+            const result = assignWork(racers, false);
+            expect(result).toEqual([
+                { name: "Racer 1", assignment: "Finish" },
+                { name: "Racer 2", assignment: "Finish" },
+                { name: "Racer 3", assignment: "Finish" },
+                { name: "Racer 4", assignment: "Station A" },
+                { name: "Racer 5", assignment: "Station B" }
+            ]);
+        });
+
+        it('should exclude no-work racers in single session mode when enough workers exist (31 racers)', () => {
+            // 31 racers: 29 workers + Amy + Sonny. 29 >= 15, so no-work people get "".
+            const workers = Array.from({ length: 29 }, (_, i) => `Worker ${i + 1}`);
+            const racers = [...workers, "Amy Hunt", "Sonny Hunt"];
+            const result = assignWork(racers, true, ["Amy Hunt", "Sonny Hunt"]);
+
+            const amyResult = result.find(r => r.name === "Amy Hunt");
+            const sonnyResult = result.find(r => r.name === "Sonny Hunt");
+            expect(amyResult.assignment).toBe("");
+            expect(sonnyResult.assignment).toBe("");
+
+            // Each of the 5 stations should have exactly 3 workers assigned.
+            const stationCounts = {};
+            result.filter(r => r.assignment !== "").forEach(r => {
+                stationCounts[r.assignment] = (stationCounts[r.assignment] || 0) + 1;
+            });
+            expect(Object.values(stationCounts).every(c => c === 3)).toBe(true);
+        });
+
+        it('should include no-work racers in single session mode when workers are insufficient', () => {
+            // Only 14 workers — one slot short of 15; Amy (index 0) should be pulled in.
+            const workers = Array.from({ length: 14 }, (_, i) => `Worker ${i + 1}`);
+            const racers = [...workers, "Amy Hunt", "Sonny Hunt"];
+            const result = assignWork(racers, true, ["Amy Hunt", "Sonny Hunt"]);
+
+            const amyResult = result.find(r => r.name === "Amy Hunt");
+            const sonnyResult = result.find(r => r.name === "Sonny Hunt");
+            expect(amyResult.assignment).not.toBe("");
+            expect(sonnyResult.assignment).toBe("");
+        });
+
+        it('should never assign a no-work racer to work during the session they are racing in, even in a shortage', () => {
+            // Scenario:
+            // Session A classes: ClassA
+            // Session B classes: ClassB
+            // Amy Hunt races ONLY in ClassA (Session A).
+            // Sonny Hunt races ONLY in ClassB (Session B).
+            // Worker 1 races ONLY in ClassA.
+            // Worker 2 races ONLY in ClassB.
+            // Both sessions have severe shortages (< 15 workers).
+            const csvText = 
+`Name\tRace Classes\tTandem Boat Partner(s)
+Amy Hunt\tClassA\t
+Sonny Hunt\tClassB\t
+Worker 1\tClassA\t
+Worker 2\tClassB\t
+Overlap Racer\tClassA, ClassB\t`;
+
+            const opt = optimizeSessions({ csvText, maxDiff: 1, isSingleSession: false });
+            
+            // Amy is racing in Session A (onlyARacers)
+            expect(opt.onlyARacers).toContain("Amy Hunt");
+            expect(opt.onlyBRacers).not.toContain("Amy Hunt");
+
+            // Sonny is racing in Session B (onlyBRacers)
+            expect(opt.onlyBRacers).toContain("Sonny Hunt");
+            expect(opt.onlyARacers).not.toContain("Sonny Hunt");
+
+            // Overlap racer is in both
+            expect(opt.overlappingRacers).toContain("Overlap Racer");
+
+            // Work for Session B is staffed by onlyARacers (who are free in B)
+            const sessionBWorkers = assignWork(opt.onlyARacers, false, ["Amy Hunt", "Sonny Hunt"]);
+            // Work for Session A is staffed by onlyBRacers (who are free in A)
+            const sessionAWorkers = assignWork(opt.onlyBRacers, false, ["Amy Hunt", "Sonny Hunt"]);
+
+            // 1. In Session A's workforce (staffed during Session A):
+            // Amy Hunt CANNOT be assigned because she is racing in Session A.
+            const amyInSessionA = sessionAWorkers.find(r => r.name === "Amy Hunt");
+            expect(amyInSessionA).toBeUndefined();
+
+            // Sonny Hunt is free during Session A, so he CAN be pulled in if needed.
+            const sonnyInSessionA = sessionAWorkers.find(r => r.name === "Sonny Hunt");
+            expect(sonnyInSessionA).toBeDefined();
+
+            // 2. In Session B's workforce (staffed during Session B):
+            // Sonny Hunt CANNOT be assigned because he is racing in Session B.
+            const sonnyInSessionB = sessionBWorkers.find(r => r.name === "Sonny Hunt");
+            expect(sonnyInSessionB).toBeUndefined();
+
+            // Amy Hunt is free during Session B, so she CAN be pulled in if needed.
+            const amyInSessionB = sessionBWorkers.find(r => r.name === "Amy Hunt");
+            expect(amyInSessionB).toBeDefined();
+
+            // 3. Overlapping racers racing in both sessions are never assigned in either session
+            expect(sessionAWorkers.find(r => r.name === "Overlap Racer")).toBeUndefined();
+            expect(sessionBWorkers.find(r => r.name === "Overlap Racer")).toBeUndefined();
         });
     });
 
