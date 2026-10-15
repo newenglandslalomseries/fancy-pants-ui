@@ -1,6 +1,13 @@
 {
   "races": [
     {
+      "name": "Farmington Slalom 2026",
+      "date": "2026-10-18",
+      "registration_url": "https://docs.google.com/spreadsheets/d/1Rl7Bb-81YtQ9kHiqxBJeNduuRbfq547ynXhdwU4VOW8/edit?gid=1742759391#gid=1742759391",
+      "results_url": "https://docs.google.com/spreadsheets/d/1Rl7Bb-81YtQ9kHiqxBJeNduuRbfq547ynXhdwU4VOW8/edit?gid=1657054501#gid=1657054501",
+      "raw_results_url": "https://docs.google.com/spreadsheets/d/1Rl7Bb-81YtQ9kHiqxBJeNduuRbfq547ynXhdwU4VOW8/edit?gid=1412665538#gid=1412665538",
+    },
+    {
       "name": "T'ville Slalom 2026",
       "date": "2026-06-07",
       "registration_url": "https://docs.google.com/spreadsheets/d/1Uzqm_9lUI-2n_QoESqhJoZ4N8dcwg99-1kd1ettqkJA/edit?gid=1684271407#gid=1684271407",

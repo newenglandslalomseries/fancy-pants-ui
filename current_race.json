@@ -1,6 +1,7 @@
 {
-  "race_name": "Winni 2026",
+  "race_name": "Farmington 2026",
   "stations": [
+    { "name": "Start", "is_start": true },
     { "name": "Station A", "max_gate": 7 },
     { "name": "Station B", "max_gate": 11 },
     { "name": "Station C", "max_gate": 16 },
