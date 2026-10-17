@@ -2,10 +2,10 @@
   "race_name": "Farmington 2026",
   "stations": [
     { "name": "Start", "is_start": true },
-    { "name": "Station A", "max_gate": 7 },
-    { "name": "Station B", "max_gate": 11 },
-    { "name": "Station C", "max_gate": 16 },
-    { "name": "Station D", "max_gate": 20 },
+    { "name": "Station A", "max_gate": 5 },
+    { "name": "Station B", "max_gate": 9 },
+    { "name": "Station C", "max_gate": 14 },
+    { "name": "Station D", "max_gate": 22 },
     { "name": "Finish", "is_finish": true }
   ]
 }
