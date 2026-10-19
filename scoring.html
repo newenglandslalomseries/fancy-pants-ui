@@ -948,6 +948,7 @@
 
             confirmationSummary.innerHTML = summaryHtml;
             confirmationModal.classList.remove('hidden');
+            confirmSubmitBtn.focus();
         });
 
         // Handle DNF Button
@@ -987,12 +988,14 @@
 
             confirmationSummary.innerHTML = summaryHtml;
             confirmationModal.classList.remove('hidden');
+            confirmSubmitBtn.focus();
         });
 
         // Cancel Submission
         cancelSubmitBtn.addEventListener('click', () => {
             confirmationModal.classList.add('hidden');
             pendingSubmissionData = null;
+            submitBtn.focus();
         });
 
         // Confirm and Submit Data to Google Form
@@ -1078,6 +1081,25 @@
                 dnfBtn.disabled = false;
             } finally {
                 pendingSubmissionData = null;
+            }
+        });
+
+        // Keyboard handling: Enter on confirmation modal triggers confirm submit
+        window.addEventListener('keydown', (e) => {
+            if (!confirmationModal.classList.contains('hidden')) {
+                if (e.key === 'Enter') {
+                    if (document.activeElement === cancelSubmitBtn) return;
+                    e.preventDefault();
+                    confirmSubmitBtn.click();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelSubmitBtn.click();
+                }
+            } else if (!recentSubmissionsModal.classList.contains('hidden')) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeSubmissionsBtn.click();
+                }
             }
         });
 

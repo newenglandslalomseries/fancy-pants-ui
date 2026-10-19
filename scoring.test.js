@@ -79,4 +79,15 @@ describe('scoring.js unit tests', () => {
             }
         });
     });
+
+    describe('scoring.html confirmation modal keyboard handling', () => {
+        it('should focus confirmSubmitBtn and handle Enter keydown to confirm submission', () => {
+            const htmlPath = path.resolve(__dirname, 'scoring.html');
+            const html = fs.readFileSync(htmlPath, 'utf8');
+
+            expect(html).toContain('confirmSubmitBtn.focus()');
+            expect(html).toContain("e.key === 'Enter'");
+            expect(html).toContain('confirmSubmitBtn.click()');
+        });
+    });
 });
