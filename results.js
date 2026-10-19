@@ -278,3 +278,56 @@ export function processResultsData(rows) {
 
     return { allData, errorData, anomalies };
 }
+
+// --- 5. Fastest Score by Class ---
+export function getFastestScoresByClass(rows) {
+    const fastestByClass = {};
+    if (!rows || !Array.isArray(rows)) return fastestByClass;
+
+    rows.forEach(row => {
+        const cls = row[COL_CLASS];
+        if (!cls) return;
+        const score = parseToNumeric(row[COL_SCORE]);
+        if (score !== null && score > 0 && score < MAX_TIME_SAMPLE) {
+            if (fastestByClass[cls] === undefined || score < fastestByClass[cls]) {
+                fastestByClass[cls] = score;
+            }
+        }
+    });
+
+    return fastestByClass;
+}
+
+// --- 6. Format Score Display ("Raw + Penalties = Score" or "+XXs, YY%") ---
+export function formatScoreDisplay(row, fastestScore, showRelative = false) {
+    if (!row) return '—';
+
+    const rawNum = parseToNumeric(row[COL_TIME]);
+    const penaltiesNum = parseToNumeric(row['Total Penalties']) ?? 0;
+    let scoreNum = parseToNumeric(row[COL_SCORE]);
+
+    if (scoreNum === null && rawNum !== null) {
+        scoreNum = rawNum + penaltiesNum;
+    }
+
+    if (rawNum === null && scoreNum === null) {
+        return row[COL_SCORE] || row[COL_TIME] || '—';
+    }
+
+    if (scoreNum === 999 || rawNum === 999 || row[COL_SCORE] === 'DNF' || row[COL_TIME] === 'DNF') {
+        return 'DNF';
+    }
+
+    const rawStr = rawNum !== null ? rawNum.toFixed(2) : (row[COL_TIME] || '0.00');
+    const scoreStr = scoreNum !== null ? scoreNum.toFixed(2) : (row[COL_SCORE] || '0.00');
+
+    const display = `${rawStr} + ${penaltiesNum} = ${scoreStr}`;
+
+    if (showRelative && fastestScore !== undefined && fastestScore !== null && scoreNum !== null && scoreNum > fastestScore && fastestScore > 0) {
+        const diff = scoreNum - fastestScore;
+        const pct = ((diff / fastestScore) * 100).toFixed(1);
+        return `+${diff.toFixed(2)}s, ${pct}%`;
+    }
+
+    return display;
+}
