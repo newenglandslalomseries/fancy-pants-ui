@@ -147,15 +147,19 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="showRelativeTimes" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                    <label for="showRelativeTimes" class="text-sm text-gray-600 cursor-pointer">Show relative times</label>
+                    <label for="showRelativeTimes" class="text-sm text-gray-600 cursor-pointer">Relative times</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="showGraph" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="showGraph" class="text-sm text-gray-600 cursor-pointer">Graph</label>
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="randomizeClassOrder" onchange="updateDisplay()" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
-                    <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Randomize class order</label>
+                    <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Random class order</label>
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="showStationAnomalies" onchange="handleShowStationAnomaliesChange()" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 peer disabled:opacity-50 disabled:cursor-not-allowed">
-                    <label for="showStationAnomalies" class="text-sm text-gray-600 cursor-pointer peer-disabled:opacity-50 peer-disabled:cursor-not-allowed">Show station anomalies</label>
+                    <label for="showStationAnomalies" class="text-sm text-gray-600 cursor-pointer peer-disabled:opacity-50 peer-disabled:cursor-not-allowed">Station anomalies</label>
                 </div>
                 <div id="tandemCheckboxGroup" class="flex items-center gap-2 hidden">
                     <input type="checkbox" id="showTandem" onchange="handleSelectionChange()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
@@ -175,9 +179,9 @@
             <!-- Errors table will be injected here -->
         </div>
 
-        <!-- Dashboard Section (Always Visible) -->
-        <div id="statsDashboard" class="space-y-4 mb-8">
-            <details class="bg-white rounded-xl shadow-md border border-gray-100 group">
+        <!-- Dashboard Section (Distribution Overview) -->
+        <div id="statsDashboard" class="space-y-4 mb-8 hidden">
+            <details class="bg-white rounded-xl shadow-md border border-gray-100 group" open>
                 <summary class="p-6 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full pr-4">
                         <div class="flex items-center gap-2">
@@ -680,13 +684,24 @@
                 }
             }
 
-            updateCharts();
+            const showGraph = document.getElementById('showGraph') && document.getElementById('showGraph').checked;
+            const statsDashboard = document.getElementById('statsDashboard');
+            if (statsDashboard) {
+                if (showGraph) {
+                    statsDashboard.classList.remove('hidden');
+                    updateCharts();
+                } else {
+                    statsDashboard.classList.add('hidden');
+                }
+            }
             renderResults(filteredResults);
             renderErrors(filteredErrors, filteredAnomalies);
         }
 
         function updateCharts() {
             if (!allData || allData.length === 0) return;
+            const showGraph = document.getElementById('showGraph') && document.getElementById('showGraph').checked;
+            if (!showGraph) return;
 
             const selectedClass = document.getElementById('classSelect').value;
             const nameValue = document.getElementById('bibSelect').value;
