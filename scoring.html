@@ -640,7 +640,7 @@
 
 
     <script type="module">
-        import { getStationGateMap, formatTime } from './scoring.js';
+        import { getStationGateMap, formatTime, convertTimeToSeconds } from './scoring.js';
 
         const form = document.getElementById('gate-form');
         const stationSelector = document.getElementById('station-selector');
@@ -995,17 +995,6 @@
             pendingSubmissionData = null;
         });
 
-        // Helper to get query param by name (case-insensitive)
-        function getQueryParamCaseInsensitive(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            for (const key of urlParams.keys()) {
-                if (key.toLowerCase() === name.toLowerCase()) {
-                    return urlParams.get(key);
-                }
-            }
-            return null;
-        }
-
         // Confirm and Submit Data to Google Form
         confirmSubmitBtn.addEventListener('click', async () => {
             if (!pendingSubmissionData) return;
@@ -1017,34 +1006,22 @@
             statusMessage.className = 'block text-center text-sm font-medium p-3 rounded-lg bg-blue-600 text-white';
             statusMessage.classList.remove('hidden');
 
-            const formData = new FormData();
+            const formData = new FormData(form);
+            const selectedStation = stationSelector.value;
 
-            // Station Name entry ID
-            const defaultStationEntryId = 'entry.206263595';
-            const stationEntryId = getQueryParamCaseInsensitive('station_entry') || defaultStationEntryId;
-            formData.append(stationEntryId, pendingSubmissionData.station);
-
-            // Bib Number entry ID
-            const defaultBibEntryId = 'entry.1472856515';
-            const bibEntryId = getQueryParamCaseInsensitive('bib_entry') || defaultBibEntryId;
-            formData.append(bibEntryId, pendingSubmissionData.bib);
-
-            // Penalties / Gates
-            const gatesToShow = stationGateMap[pendingSubmissionData.station] || [];
-            gatesToShow.forEach(gateNum => {
-                const defaultGateEntryId = `entry.gate${gateNum}`;
-                const gateEntryId = getQueryParamCaseInsensitive(`gate${gateNum}_entry`) || defaultGateEntryId;
-                
-                const gatePenalty = pendingSubmissionData.gates.find(g => g.gate === gateNum);
-                const val = gatePenalty ? gatePenalty.value : 'Clean';
-                formData.append(gateEntryId, val);
-            });
+            // Ensure the station selector itself is not submitted
+            formData.delete('station');
 
             // Time / DNF
-            const defaultTimeEntryId = 'entry.135017997';
-            const timeEntryId = getQueryParamCaseInsensitive('time_entry') || defaultTimeEntryId;
-            if (pendingSubmissionData.time) {
-                formData.append(timeEntryId, pendingSubmissionData.time);
+            if (pendingSubmissionData.isDNF) {
+                formData.set('entry.873039571', '999.0');
+            } else if (isFinishStation[selectedStation] && timeInput.value) {
+                const totalSeconds = convertTimeToSeconds(timeInput.value);
+                if (totalSeconds) {
+                    formData.set('entry.873039571', totalSeconds);
+                }
+            } else {
+                formData.delete('entry.873039571');
             }
 
             try {

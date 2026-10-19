@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { getStationGateMap, formatTime } from './scoring.js';
+import { getStationGateMap, formatTime, convertTimeToSeconds } from './scoring.js';
+import fs from 'fs';
+import path from 'path';
 
 describe('scoring.js unit tests', () => {
     describe('getStationGateMap', () => {
@@ -40,6 +42,41 @@ describe('scoring.js unit tests', () => {
 
         it('should handle empty input', () => {
             expect(formatTime('')).toBe('');
+        });
+    });
+
+    describe('convertTimeToSeconds', () => {
+        it('should convert MM:SS.HH or M:SS.HH to total decimal seconds', () => {
+            expect(convertTimeToSeconds('1:45.23')).toBe('105.23');
+            expect(convertTimeToSeconds('0:12.34')).toBe('12.34');
+            expect(convertTimeToSeconds('2:00.00')).toBe('120.00');
+            expect(convertTimeToSeconds('12:34.56')).toBe('754.56');
+        });
+
+        it('should handle already formatted decimal seconds or DNF', () => {
+            expect(convertTimeToSeconds('999.0')).toBe('999.0');
+            expect(convertTimeToSeconds('DNF')).toBe('999.0');
+            expect(convertTimeToSeconds('105.23')).toBe('105.23');
+        });
+
+        it('should handle empty or invalid input', () => {
+            expect(convertTimeToSeconds('')).toBe('');
+            expect(convertTimeToSeconds(null)).toBe('');
+            expect(convertTimeToSeconds(undefined)).toBe('');
+        });
+    });
+
+    describe('scoring.html entry IDs verification', () => {
+        it('should use numeric entry IDs for all gates in the form', () => {
+            const htmlPath = path.resolve(__dirname, 'scoring.html');
+            const html = fs.readFileSync(htmlPath, 'utf8');
+
+            for (let i = 1; i <= 25; i++) {
+                const gateRegex = new RegExp(`id="gate-${i}"[\\s\\S]*?name="(entry\\.[0-9]+)"`);
+                const match = html.match(gateRegex);
+                expect(match, `Gate ${i} should have a numeric entry ID`).not.toBeNull();
+                expect(match[1]).toMatch(/^entry\.\d+$/);
+            }
         });
     });
 });
