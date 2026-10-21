@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Series Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 4px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .scroll-shadow-container {
+            background:
+                linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
+                linear-gradient(to right, rgba(255, 255, 255, 0), white 70%) 100% 0,
+                radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .12), rgba(0, 0, 0, 0)),
+                radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .12), rgba(0, 0, 0, 0)) 100% 0;
+            background-repeat: no-repeat;
+            background-color: white;
+            background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+            background-attachment: local, local, scroll, scroll;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-900">
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-blue-800 mb-2">Series Results</h1>
+        </header>
+
+        <!-- Year Selector Section -->
+        <div class="mb-6 px-1">
+            <div class="flex items-center gap-2 w-full">
+                <div class="flex-1 min-w-0">
+                    <select
+                        id="yearSelect"
+                        onchange="handleYearChange()"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white font-semibold text-blue-900 truncate"
+                    >
+                        <option value="">Loading years...</option>
+                    </select>
+                </div>
+
+                <!-- Refresh Button -->
+                <button
+                    onclick="refreshData()"
+                    id="refreshBtn"
+                    title="Refresh data from sheets"
+                    class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all flex items-center justify-center shadow-sm active:transform active:scale-95"
+                >
+                    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                </button>
+            </div>
+            <div id="statusMessage" class="mt-2 text-sm hidden font-medium"></div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="hidden flex flex-col items-center justify-center py-12">
+            <div class="loading-spinner mb-4"></div>
+            <p id="loadingText" class="text-gray-500 animate-pulse">Loading series results...</p>
+        </div>
+
+        <!-- Results Table Container -->
+        <div id="resultsContainer" class="mb-8"></div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-20 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No data available</h3>
+            <p class="mt-1 text-sm text-gray-500">No race results found for the selected year.</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            getUniqueYears,
+            getRacesForYear,
+            getTsvExportUrl,
+            parseRaceTSV,
+            buildSeriesData
+        } from './series.js';
+
+        const FALLBACK_RACES = {
+            "races": [
+                {
+                    "name": "Farmington Slalom 2025",
+                    "abbrev": "FR",
+                    "date": "2025-10-17",
+                    "registration_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=844370283",
+                    "results_url": "https://docs.google.com/spreadsheets/d/1gvGgLJ8jx9a8tfydTlQowOHLPJ_dG-0iW1iOfEvdIfs/edit?gid=1657054501#gid=1657054501"
+                }
+            ]
+        };
+
+        let allRaces = [];
+
+        async function init() {
+            await loadRaces();
+        }
+
+        async function loadRaces() {
+            const yearSelect = document.getElementById('yearSelect');
+            try {
+                const response = await fetch('races.json');
+                if (!response.ok) throw new Error('File not found');
+                const data = await response.json();
+                allRaces = data.races || [];
+            } catch (e) {
+                allRaces = FALLBACK_RACES.races;
+            }
+
+            const years = getUniqueYears(allRaces);
+            yearSelect.innerHTML = '';
+
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearSelect.appendChild(option);
+            });
+
+            if (years.length > 0) {
+                yearSelect.value = years[0]; // Default to most recent year
+                await handleYearChange();
+            } else {
+                document.getElementById('emptyState').classList.remove('hidden');
+            }
+        }
+
+        async function handleYearChange() {
+            await loadYearData();
+        }
+
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            btn.disabled = true;
+            icon.classList.add('refresh-spin');
+
+            await loadYearData();
+
+            icon.classList.remove('refresh-spin');
+            btn.disabled = false;
+        }
+
+        async function loadYearData() {
+            const yearSelect = document.getElementById('yearSelect');
+            const selectedYear = yearSelect.value;
+            const loading = document.getElementById('loading');
+            const emptyState = document.getElementById('emptyState');
+            const statusMessage = document.getElementById('statusMessage');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            if (!selectedYear) return;
+
+            yearSelect.disabled = true;
+            loading.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            statusMessage.classList.add('hidden');
+            resultsContainer.innerHTML = '';
+
+            const yearRaces = getRacesForYear(allRaces, selectedYear);
+
+            try {
+                const raceResultsList = await Promise.all(
+                    yearRaces.map(async (race) => {
+                        const headerName = race.abbrev || race.name;
+                        if (!race.results_url) {
+                            return { name: race.name, abbrev: headerName, rows: [] };
+                        }
+                        try {
+                            const exportUrl = getTsvExportUrl(race.results_url);
+                            const response = await fetch(exportUrl);
+                            if (!response.ok) {
+                                throw new Error(`Failed to fetch ${race.name}`);
+                            }
+                            const tsvText = await response.text();
+                            const rows = parseRaceTSV(tsvText);
+                            return { name: race.name, abbrev: headerName, rows };
+                        } catch (err) {
+                            console.error(`Error loading ${race.name}:`, err);
+                            return { name: race.name, abbrev: headerName, rows: [] };
+                        }
+                    })
+                );
+
+                const seriesData = buildSeriesData(raceResultsList);
+                renderSeriesTable(seriesData);
+            } catch (error) {
+                console.error(error);
+                statusMessage.textContent = error.message;
+                statusMessage.className = 'mt-2 text-sm font-medium text-red-500';
+                statusMessage.classList.remove('hidden');
+                emptyState.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+                yearSelect.disabled = false;
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderSeriesTable(seriesData) {
+            const container = document.getElementById('resultsContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            if (!seriesData || !seriesData.classes || seriesData.classes.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            const { raceNames, classes } = seriesData;
+            const colCount = 1 + (raceNames.length * 2) + 3;
+
+            let tableHtml = `
+                <div class="md:hidden text-center mb-1 animate-pulse">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">← Scroll table for more →</span>
+                </div>
+                <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden relative">
+                    <div class="overflow-x-auto scroll-shadow-container">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-3 py-2 border-b border-gray-100"></th>
+                                    <th colspan="${raceNames.length}" class="px-3 py-2 border-b border-l border-gray-200 text-center">Places</th>
+                                    <th colspan="${raceNames.length}" class="px-3 py-2 border-b border-l border-gray-200 text-center">Points</th>
+                                    <th class="px-3 py-2 border-b border-l border-gray-200 text-center whitespace-nowrap">Total</th>
+                                    <th class="px-3 py-2 border-b border-gray-100 text-center whitespace-nowrap">Best of 4</th>
+                                    <th class="px-3 py-2 border-b border-gray-100 text-center whitespace-nowrap"></th>
+                                </tr>
+                                <tr>
+                                    <th class="px-3 py-2 border-b border-gray-100">Name</th>
+                                    ${raceNames.map((name, idx) => `
+                                        <th class="px-3 py-2 border-b border-gray-100 ${idx === 0 ? 'border-l border-gray-200' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
+                                    `).join('')}
+                                    ${raceNames.map((name, idx) => `
+                                        <th class="px-3 py-2 border-b border-gray-100 ${idx === 0 ? 'border-l border-gray-200' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
+                                    `).join('')}
+                                    <th class="px-3 py-2 border-b border-l border-gray-200 text-center whitespace-nowrap"></th>
+                                    <th class="px-3 py-2 border-b border-gray-100 text-center whitespace-nowrap"></th>
+                                    <th class="px-3 py-2 border-b border-gray-100 text-center whitespace-nowrap">Series Rank</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+            `;
+
+            classes.forEach(clsGroup => {
+                tableHtml += `
+                    <tr class="bg-gray-100">
+                        <td colspan="${colCount}" class="px-3 py-1 text-[10px] font-black text-gray-500 uppercase tracking-widest border-y border-gray-200">${escapeHtml(clsGroup.className)}</td>
+                    </tr>
+                `;
+
+                clsGroup.racers.forEach(racer => {
+                    tableHtml += `
+                        <tr class="hover:bg-blue-50 transition-colors">
+                            <td class="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">${escapeHtml(racer.name)}</td>
+                            ${racer.ranks.map((rank, idx) => `
+                                <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l border-gray-100' : ''} text-center whitespace-nowrap">${escapeHtml(rank)}</td>
+                            `).join('')}
+                            ${racer.points.map((pt, idx) => `
+                                <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l border-gray-100' : ''} text-center whitespace-nowrap">${escapeHtml(pt)}</td>
+                            `).join('')}
+                            <td class="px-3 py-2 text-gray-900 font-bold border-l border-gray-100 text-center whitespace-nowrap">${escapeHtml(racer.totalPoints)}</td>
+                            <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.bestOf4Points)}</td>
+                            <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.seriesRank)}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = tableHtml;
+        }
+
+        window.handleYearChange = handleYearChange;
+        window.refreshData = refreshData;
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
