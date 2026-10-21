@@ -46,3 +46,19 @@ export function formatTime(digits) {
 
     return `${parseInt(mm, 10)}:${ss}.${hh}`;
 }
+
+// --- 3. Convert Time (MM:SS.HH or M:SS.HH) to Decimal Seconds ---
+export function convertTimeToSeconds(timeStr) {
+    if (!timeStr) return '';
+    if (timeStr === 'DNF' || timeStr === '999.0') return '999.0';
+    if (typeof timeStr === 'string' && timeStr.includes(':')) {
+        const [minutesStr, secondsStr] = timeStr.split(':');
+        const minutes = parseInt(minutesStr, 10);
+        const seconds = parseFloat(secondsStr);
+        if (!isNaN(minutes) && !isNaN(seconds)) {
+            return ((minutes * 60) + seconds).toFixed(2);
+        }
+    }
+    const num = parseFloat(timeStr);
+    return isNaN(num) ? '' : num.toFixed(2);
+}

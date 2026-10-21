@@ -146,12 +146,20 @@
                     <label for="standingsView" class="text-sm text-gray-600 cursor-pointer">Standings view</label>
                 </div>
                 <div class="flex items-center gap-2">
+                    <input type="checkbox" id="showRelativeTimes" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="showRelativeTimes" class="text-sm text-gray-600 cursor-pointer">Relative times</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="showGraph" onchange="updateDisplay()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <label for="showGraph" class="text-sm text-gray-600 cursor-pointer">Graph</label>
+                </div>
+                <div class="flex items-center gap-2">
                     <input type="checkbox" id="randomizeClassOrder" onchange="updateDisplay()" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
-                    <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Randomize class order</label>
+                    <label for="randomizeClassOrder" class="text-sm text-gray-600 cursor-pointer">Random class order</label>
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="showStationAnomalies" onchange="handleShowStationAnomaliesChange()" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 peer disabled:opacity-50 disabled:cursor-not-allowed">
-                    <label for="showStationAnomalies" class="text-sm text-gray-600 cursor-pointer peer-disabled:opacity-50 peer-disabled:cursor-not-allowed">Show station anomalies</label>
+                    <label for="showStationAnomalies" class="text-sm text-gray-600 cursor-pointer peer-disabled:opacity-50 peer-disabled:cursor-not-allowed">Station anomalies</label>
                 </div>
                 <div id="tandemCheckboxGroup" class="flex items-center gap-2 hidden">
                     <input type="checkbox" id="showTandem" onchange="handleSelectionChange()" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
@@ -171,9 +179,9 @@
             <!-- Errors table will be injected here -->
         </div>
 
-        <!-- Dashboard Section (Always Visible) -->
-        <div id="statsDashboard" class="space-y-4 mb-8">
-            <details class="bg-white rounded-xl shadow-md border border-gray-100 group">
+        <!-- Dashboard Section (Distribution Overview) -->
+        <div id="statsDashboard" class="space-y-4 mb-8 hidden">
+            <details class="bg-white rounded-xl shadow-md border border-gray-100 group" open>
                 <summary class="p-6 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full pr-4">
                         <div class="flex items-center gap-2">
@@ -235,12 +243,14 @@
     </footer>
 
     <script type="module">
-        import { 
-            parseCSV, 
-            parseToNumeric, 
-            formatBytes, 
+        import {
+            parseCSV,
+            parseToNumeric,
+            formatBytes,
             processResultsData,
             checkStationAnomalies,
+            getFastestScoresByClass,
+            formatScoreDisplay,
             COL_BIB,
             COL_NAME,
             COL_CLASS,
@@ -458,7 +468,7 @@
                     const rawSheetId = rawUrlMatch ? rawUrlMatch[1] : '';
                     const rawGidMatch = race.raw_results_url.match(/[?&]gid=([0-9]+)/);
                     const rawGid = rawGidMatch ? rawGidMatch[1] : '0';
-                    
+
                     if (rawSheetId && rawGid) {
                         try {
                             const rawUrl = `https://docs.google.com/spreadsheets/d/${rawSheetId}/export?format=csv&gid=${rawGid}&t=${new Date().getTime()}`;
@@ -564,18 +574,18 @@
         function handleSelectionChange() {
             const nameValue = document.getElementById('bibSelect').value;
             const tandemGroup = document.getElementById('tandemCheckboxGroup');
-            
+
             if (nameValue) {
                 const otherNames = [...new Set(allData.map(r => r[COL_NAME]).filter(n => n && n !== nameValue))];
                 const isSubstringOfOther = otherNames.some(n => n.includes(nameValue));
-                
+
                 if (isSubstringOfOther) {
                     tandemGroup.classList.remove('hidden');
                 } else {
                     tandemGroup.classList.add('hidden');
                     document.getElementById('showTandem').checked = false;
                 }
-                
+
                 const racerRows = allData.filter(r => {
                     if (document.getElementById('showTandem').checked) {
                         return r[COL_NAME] && r[COL_NAME].includes(nameValue);
@@ -674,13 +684,24 @@
                 }
             }
 
-            updateCharts();
+            const showGraph = document.getElementById('showGraph') && document.getElementById('showGraph').checked;
+            const statsDashboard = document.getElementById('statsDashboard');
+            if (statsDashboard) {
+                if (showGraph) {
+                    statsDashboard.classList.remove('hidden');
+                    updateCharts();
+                } else {
+                    statsDashboard.classList.add('hidden');
+                }
+            }
             renderResults(filteredResults);
             renderErrors(filteredErrors, filteredAnomalies);
         }
 
         function updateCharts() {
             if (!allData || allData.length === 0) return;
+            const showGraph = document.getElementById('showGraph') && document.getElementById('showGraph').checked;
+            if (!showGraph) return;
 
             const selectedClass = document.getElementById('classSelect').value;
             const nameValue = document.getElementById('bibSelect').value;
@@ -723,7 +744,7 @@
             if (nameValue) {
                 const showTandem = !document.getElementById('tandemCheckboxGroup').classList.contains('hidden') && document.getElementById('showTandem').checked;
                 const racerFilter = (row) => showTandem ? (row[COL_NAME] && row[COL_NAME].includes(nameValue)) : row[COL_NAME] === nameValue;
-                
+
                 const racerRuns = (selectedClass && selectedClass !== '*COMBINE*')
                     ? allData.filter(row => row[COL_CLASS] === selectedClass && racerFilter(row))
                     : allData.filter(racerFilter);
@@ -789,6 +810,8 @@
             }
 
             const isCombined = document.getElementById('classSelect') && document.getElementById('classSelect').value === '*COMBINE*';
+            const showRelative = document.getElementById('showRelativeTimes') && document.getElementById('showRelativeTimes').checked;
+            const fastestScores = getFastestScoresByClass(allData && allData.length > 0 ? allData : results);
 
             const groups = results.reduce((acc, row) => {
                 const cls = isCombined ? 'All Racers' : (row[COL_CLASS] || 'Unclassified');
@@ -817,8 +840,6 @@
             }
 
             const dynamicKeys = [
-                'Raw Time',
-                'Total Penalties',
                 'Total Score',
                 'Gates Touched',
                 'Gates Fiftied',
@@ -881,6 +902,11 @@
                             ${isCombined ? `<td class="px-3 py-2 text-gray-600 font-medium whitespace-nowrap cursor-pointer hover:text-blue-600 underline decoration-transparent hover:decoration-blue-600 transition-colors" onclick="filterByClass('${safeRowClass}')" title="Filter to this class">${rowClass}</td>` : ''}
                             <td class="px-3 py-2 font-bold text-blue-600">#${runNum}</td>
                             ${dynamicKeys.map(key => {
+                                if (key === 'Total Score') {
+                                    const fastest = fastestScores[row[COL_CLASS]];
+                                    const val = formatScoreDisplay(row, fastest, showRelative);
+                                    return `<td class="px-3 py-2 text-gray-700 font-medium whitespace-nowrap">${val}</td>`;
+                                }
                                 var val = row[key] || '—';
                                 if (key === 'Gates Touched' || key === 'Gates Fiftied') {
                                     val = val.toString().replace(/Gate\s*#/gi, '').trim() || '0';
@@ -905,7 +931,7 @@
         function renderErrors(errorRows, anomaliesList = []) {
             const container = document.getElementById('errorsContainer');
             if (!container) return;
-            
+
             if ((!errorRows || errorRows.length === 0) && (!anomaliesList || anomaliesList.length === 0)) {
                 container.classList.add('hidden');
                 container.innerHTML = '';
@@ -1014,7 +1040,7 @@
                         const rawSheetId = rawUrlMatch ? rawUrlMatch[1] : '';
                         const rawGidMatch = race.raw_results_url.match(/[?&]gid=([0-9]+)/);
                         const rawGid = rawGidMatch ? rawGidMatch[1] : '0';
-                        
+
                         if (rawSheetId && rawGid) {
                             const rawUrl = `https://docs.google.com/spreadsheets/d/${rawSheetId}/export?format=csv&gid=${rawGid}&t=${new Date().getTime()}`;
                             const rawResponse = await fetch(rawUrl);

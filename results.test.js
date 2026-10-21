@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCSV, parseToNumeric, formatBytes, processResultsData, checkStationAnomalies } from './results.js';
+import { parseCSV, parseToNumeric, formatBytes, processResultsData, checkStationAnomalies, getFastestScoresByClass, formatScoreDisplay } from './results.js';
 
 
 describe('results.js unit tests', () => {
@@ -215,6 +215,99 @@ describe('results.js unit tests', () => {
                 { 'Bib #': '15', 'Station': 'Finish', 'Timestamp': '2026-07-01 10:04:00', 'Run #': '2' }
             ];
             expect(checkStationAnomalies(rows)).toEqual([]);
+        });
+    });
+
+    describe('getFastestScoresByClass', () => {
+        it('should find the minimum valid score for each class', () => {
+            const rows = [
+                { 'Class': 'C-1 Men', 'Total Score': '213.14' },
+                { 'Class': 'C-1 Men', 'Total Score': '166.83' },
+                { 'Class': 'C-1 Men', 'Total Score': '999.00' }, // DNF should be ignored
+                { 'Class': 'K-1 Women', 'Total Score': '155.20' },
+                { 'Class': 'K-1 Women', 'Total Score': '170.00' }
+            ];
+            const fastest = getFastestScoresByClass(rows);
+            expect(fastest['C-1 Men']).toBe(166.83);
+            expect(fastest['K-1 Women']).toBe(155.20);
+        });
+
+        it('should handle empty or null rows', () => {
+            expect(getFastestScoresByClass([])).toEqual({});
+            expect(getFastestScoresByClass(null)).toEqual({});
+        });
+    });
+
+    describe('formatScoreDisplay', () => {
+        it('should format score as Raw + Penalty = Total for everyone when showRelative is false or omitted', () => {
+            const nonLeaderRow = {
+                'Raw Time': '211.14',
+                'Total Penalties': '2',
+                'Total Score': '213.14',
+                'Class': 'C-1 Men'
+            };
+            const leaderRow = {
+                'Raw Time': '166.83',
+                'Total Penalties': '0',
+                'Total Score': '166.83',
+                'Class': 'C-1 Men'
+            };
+            expect(formatScoreDisplay(nonLeaderRow, 166.83)).toBe('211.14 + 2 = 213.14');
+            expect(formatScoreDisplay(nonLeaderRow, 166.83, false)).toBe('211.14 + 2 = 213.14');
+            expect(formatScoreDisplay(leaderRow, 166.83, false)).toBe('166.83 + 0 = 166.83');
+        });
+
+        it('should show Raw + Penalty = Total for class leader and only "+XXs, YY%" for everyone else when showRelative is true', () => {
+            const leaderRow = {
+                'Raw Time': '166.83',
+                'Total Penalties': '0',
+                'Total Score': '166.83',
+                'Class': 'C-1 Men'
+            };
+            const nonLeaderRow = {
+                'Raw Time': '211.14',
+                'Total Penalties': '2',
+                'Total Score': '213.14',
+                'Class': 'C-1 Men'
+            };
+            const tiedLeaderRow = {
+                'Raw Time': '166.83',
+                'Total Penalties': '0',
+                'Total Score': '166.83',
+                'Class': 'C-1 Men'
+            };
+
+            expect(formatScoreDisplay(leaderRow, 166.83, true)).toBe('166.83 + 0 = 166.83');
+            expect(formatScoreDisplay(tiedLeaderRow, 166.83, true)).toBe('166.83 + 0 = 166.83');
+            expect(formatScoreDisplay(nonLeaderRow, 166.83, true)).toBe('+46.31s, 27.8%');
+        });
+
+        it('should handle DNF rows', () => {
+            const row = {
+                'Raw Time': '999.00',
+                'Total Penalties': '0',
+                'Total Score': '999.00'
+            };
+            expect(formatScoreDisplay(row, 166.83, false)).toBe('DNF');
+            expect(formatScoreDisplay(row, 166.83, true)).toBe('DNF');
+        });
+
+        it('should handle missing penalties as 0', () => {
+            const row = {
+                'Raw Time': '150.00',
+                'Total Score': '150.00'
+            };
+            expect(formatScoreDisplay(row, 150.00, false)).toBe('150.00 + 0 = 150.00');
+            expect(formatScoreDisplay(row, 150.00, true)).toBe('150.00 + 0 = 150.00');
+        });
+
+        it('should display Raw + Penalty = Total when fastestScore is undefined or null even if showRelative is true', () => {
+            const row = {
+                'Raw Time': '211.14',
+                'Total Penalties': '2',
+                'Total Score': '213.14'
+            };
+            expect(formatScoreDisplay(row, undefined, true)).toBe('211.14 + 2 = 213.14');
         });
     });
 });
