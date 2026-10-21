@@ -1,10 +1,11 @@
 This repo contains web apps for the Fancy Pants used by the
 [New England Slalom Series](https://www.nessrace.com/). There are
-currently three apps:
+currently four apps:
 
+* Sessions, for assigning classes to sessions and racers to work assignments.
 * Scoring, for recording gate judging results and raw time for each bib number.
 * Results, for viewing race results in real time.
-* Sessions, for assigning classes to sessions and racers to work assignments.
+* Series, for viewing combined series results across a year's races.
 
 # Architecture
 
@@ -23,8 +24,8 @@ Fancy Pants consists of these components:
   multiple sheets:
   * Website-Registration: Submissions from the Registration form.
   * Registration: Summary of racer name, class, tandem partner, bib
-    number, and work assignment, manually entered by the race
-    organizer based on Website-Registration and the Sessions app.
+    number, and work assignment, copy-and-pasted by the race
+    organizer from the Sessions app.
   * Form Responses N: Submissions from the Results form.  Each Results
     submission contains only a subset of the gate results or the raw
     run time for a single run of a single bib number.
@@ -39,11 +40,14 @@ Fancy Pants consists of these components:
 * The Sessions app reads racer, tandem partner, and class information
   from the Website Registration sheet to determine class to session
   mappings, assigns bib numbers to racers, and gives racers their work
-  assignments.
+  assignments. It has a "Copy registration data" button which provides
+  all the data to fill in the Registration sheet on the spreadsheet.
 * The Scoring app submits results to the Results Responses sheet for a
   single station and bib at a time.
 * The Results app reads the Unfiltered Results sheet and displays
-  summary and detail information by class and racer.
+  summary and detail information by class and racer for an individual race.
+* The Series app reads the Unfiltered Results sheets for all races in a
+  year and displays overall series ranking.
 
 # Deployment
 
@@ -51,22 +55,26 @@ These apps need to work on race weekends or else the race cannot
 run. For increased reliability, this repo is stored on both
 [GitHub](https://github.com/newenglandslalomseries/fancy-pants-ui) and
 [GitLab](https://gitlab.com/aca-ne-group/fancy-pants-ui). GitHub is
-the primary location; all development occurs there. GitLab is
-configured to mirror the repo so all changes on GitHub appear there as
-well.
+the primary location; all development occurs there. Changes are pushed to
+GitLab as a backup.
 
 The web apps are deployed on GitHub Pages and GitLab Pages. The URLs
 are
 
-* Scoring
-  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/scoring.html
-  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/scoring.html
-* Results
-  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/results.html
-  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/results.html
 * Sessions
   * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/sessions.html
   * GitLab: https://fancy-pants-ui-e906da.gitlab.io/sessions.html
+* Scoring
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/scoring.html
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/scoring.html
+  * Note: These URLs do not work by themselves. You must use the URLs from
+    a QR code provided at the race.
+* Results
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/results.html
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/results.html
+* Series
+  * GitHub: https://newenglandslalomseries.github.io/fancy-pants-ui/series.html
+  * GitLab: https://fancy-pants-ui-e906da.gitlab.io/series.html
 
 # Race preparation
 
@@ -130,6 +138,28 @@ in the spreadsheet.
 Add a comma between the keys/values inside the curly-brackets and
 between entries in the array, but not after the last key/value or
 after the final entry in the array.
+
+# Sessions app
+
+The sessions app generates one (Session A) or two (Sessions A and B)
+lists of classes and racers. For two sessions, it attempts to balance
+the number of bibs in each session.
+
+The app assigns bib numbers to racers (or pairs of racers for tandem
+classes).
+
+The app assigns individual racers to work stations. You can manually
+change the assignments for every racer. There is a built-in "no-work
+list" of racers (e.g.: race organizers) that it only assigns a work
+station if there are not enough people. Once you manually assign a
+racer to a work station, that assignment should remain in place for
+the entire calendar day unless you click on "Reset work assignments"
+at the top of the page.
+
+Once everything is ready, click the "Copy registration data"
+button. Go to the Registration tab of the spreadsheet, press Ctrl-A
+(Cmd-A on a Mac) twice to select the entire sheet, and then paste the
+results.
 
 # Scoring app
 
@@ -220,8 +250,32 @@ so `entry.1989426203` is the entry ID for the Gate #25 question.
 # Results app
 
 The results viewer display results for any file in the races.json
-file.
+file. It has various filters and options.
 
-# Sessions app
+Normally, the app displays both runs for every racer. Check the
+"Standings view" checkbox to see only the best run for each racer
+which is an easier way to see who got 1st, 2nd, and 3rd.
 
-TODO.
+The app displays errors that it notices in the scoring data. Check the
+"Station anomalies" checkbox to get more details about the errors. You
+can then clean up the data in the Form Responses sheet to fix the
+problems.
+
+# Series app
+
+The Series app shows combined results across all the races in a
+year. For each racer in each class, the app shows their race rank,
+series points earned in that race, total series points earned, the sum
+of the four best series points, and the series rank for that racer in
+that class. Only racers that entered N/2+1 (rounded down) races in a
+class qualify for a series rank in that class.
+
+The series app also shows a gold "raced 'em all" star next to each
+racer's name if that racer enter all the races in a year. The racer
+does not have to enter all the races in the same class so long as they
+entered at least one class in each race.
+
+If people registered under different names in different races, they
+will be counted as different racers in the series results. The
+organizers can clean up such mismatches after the fact though it is
+best if everyone uses a consistent name for the whole season.
