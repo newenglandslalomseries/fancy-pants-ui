@@ -248,14 +248,31 @@
             }
 
             emptyState.classList.add('hidden');
-            const { raceNames, totalRaces, minRacesToQualify, classes } = seriesData;
+            const { raceNames, totalRaces, minRacesToQualify, allRacesRacers = [], classes } = seriesData;
             const colCount = 1 + (raceNames.length * 2) + 3;
 
+            const allRacesListHtml = allRacesRacers.length > 0
+                ? `<ul class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 list-disc pl-5">
+                    ${allRacesRacers.map(name => `<li>${escapeHtml(name)}</li>`).join('')}
+                   </ul>`
+                : '<p class="text-gray-500 italic">None</p>';
+
             let tableHtml = `
+                <details class="bg-white rounded-xl shadow-sm border border-gray-200 group mb-4">
+                    <summary class="px-4 py-3 cursor-pointer select-none flex items-center justify-between list-none outline-none [&::-webkit-details-marker]:hidden text-sm font-semibold text-gray-800">
+                        <div class="flex items-center gap-2">
+                            <span>Raced 'em all</span>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold">${allRacesRacers.length}</span>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 transition-transform duration-200 group-open:rotate-180"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="px-4 pb-4 pt-2 border-t border-gray-100 text-sm text-gray-700">
+                        ${allRacesListHtml}
+                    </div>
+                </details>
                 <div class="flex items-center gap-6 mb-3 px-1 text-sm text-gray-700">
                     <span>Total races: <strong>${totalRaces}</strong></span>
                     <span>Races to qualify: <strong>${minRacesToQualify}</strong></span>
-                    <span>Raced 'em all: <span class="text-amber-400">★</span></span>
                 </div>
                 <div class="md:hidden text-center mb-1 animate-pulse">
                     <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">← Scroll table for more →</span>
@@ -294,12 +311,9 @@
                 `;
 
                 clsGroup.racers.forEach(racer => {
-                    const starHtml = racer.enteredAllRaces
-                        ? '<span class="text-amber-400 ml-1" title="Entered every race">★</span>'
-                        : '';
                     tableHtml += `
                         <tr class="hover:bg-blue-50 transition-colors">
-                            <td class="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">${escapeHtml(racer.name)}${starHtml}</td>
+                            <td class="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">${escapeHtml(racer.name)}</td>
                             ${racer.ranks.map((rank, idx) => `
                                 <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(rank)}</td>
                             `).join('')}

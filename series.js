@@ -73,7 +73,7 @@ export function getTsvExportUrl(resultsUrl) {
     return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=tsv&gid=${gid}&t=${new Date().getTime()}`;
 }
 
-// --- 6. Normalize Class Name ---
+// --- 6. Normalize Class and Racer Names ---
 export function normalizeClassName(cls) {
     if (!cls) return '';
     const trimmed = cls.trim();
@@ -85,6 +85,18 @@ export function normalizeClassName(cls) {
     }
     if (/^K-1\s+Grand\s+Masters?(\s+(Men|Women))?(\s*\(65\+\))?$/i.test(trimmed)) {
         return 'K-1 Grand Masters';
+    }
+    return trimmed;
+}
+
+export function normalizeRacerName(name) {
+    if (!name) return '';
+    const trimmed = name.trim();
+    if (trimmed.includes('&')) {
+        const parts = trimmed.split('&').map(p => p.trim()).filter(Boolean);
+        if (parts.length > 1) {
+            return parts.sort((a, b) => a.localeCompare(b)).join(' & ');
+        }
     }
     return trimmed;
 }
@@ -127,7 +139,7 @@ export function parseRaceTSV(tsvText) {
         }
 
         const cls = normalizeClassName(row[classIdx] || '');
-        const name = (row[nameIdx] || '').trim();
+        const name = normalizeRacerName(row[nameIdx] || '');
         const classRank = (row[classRankIdx] || '').trim();
 
         if (!cls || !name) continue;
@@ -163,7 +175,7 @@ export function rankToPoints(rank) {
 // raceResultsList: Array of { name?: string, abbrev?: string, rows: Array<{ Class, Name, 'Class Rank' }> }
 export function buildSeriesData(raceResultsList) {
     if (!Array.isArray(raceResultsList)) {
-        return { raceNames: [], totalRaces: 0, minRacesToQualify: 0, classes: [] };
+        return { raceNames: [], totalRaces: 0, minRacesToQualify: 0, allRacesRacers: [], classes: [] };
     }
 
     const raceNames = raceResultsList.map(r => r.abbrev || r.name || '');
@@ -183,7 +195,7 @@ export function buildSeriesData(raceResultsList) {
         const rows = race.rows || [];
         rows.forEach(row => {
             const cls = normalizeClassName(row[COL_CLASS] || '');
-            const name = (row[COL_NAME] || '').trim();
+            const name = normalizeRacerName(row[COL_NAME] || '');
             const rank = (row[COL_CLASS_RANK] || '').toString().trim();
 
             if (!cls || !name) return;
@@ -197,11 +209,12 @@ export function buildSeriesData(raceResultsList) {
             }
             if (rank !== '') {
                 racerMap.get(name).set(raceIdx, rank);
-                recordRacerInRace(name, raceIdx);
                 if (name.includes('&')) {
                     name.split('&').map(p => p.trim()).filter(Boolean).forEach(part => {
                         recordRacerInRace(part, raceIdx);
                     });
+                } else {
+                    recordRacerInRace(name, raceIdx);
                 }
             }
         });
@@ -209,6 +222,13 @@ export function buildSeriesData(raceResultsList) {
 
     const totalRaces = raceResultsList.length;
     const minRacesToQualify = totalRaces > 0 ? Math.floor(totalRaces / 2) + 1 : 0;
+
+    const allRacesRacers = totalRaces > 0
+        ? Array.from(racerAllRacesMap.entries())
+            .filter(([, racesSet]) => racesSet.size === totalRaces)
+            .map(([racerName]) => racerName)
+            .sort((a, b) => a.localeCompare(b))
+        : [];
 
     const sortedClassNames = Array.from(classMap.keys()).sort((a, b) => a.localeCompare(b));
 
@@ -226,7 +246,6 @@ export function buildSeriesData(raceResultsList) {
                 .sort((a, b) => b - a)
                 .slice(0, 4)
                 .reduce((sum, p) => sum + p, 0);
-            const enteredAllRaces = totalRaces > 0 && (racerAllRacesMap.get(racerName)?.size === totalRaces);
 
             return {
                 name: racerName,
@@ -235,7 +254,6 @@ export function buildSeriesData(raceResultsList) {
                 totalPoints,
                 bestOf4Points,
                 racesCount: numericPoints.length,
-                enteredAllRaces,
                 seriesRank: ''
             };
         });
@@ -268,6 +286,7 @@ export function buildSeriesData(raceResultsList) {
         raceNames,
         totalRaces,
         minRacesToQualify,
+        allRacesRacers,
         classes
     };
 }

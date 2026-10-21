@@ -393,7 +393,7 @@ describe('series.js unit tests', () => {
             expect(womenRacer.totalPoints).toBe(18);
         });
 
-        it('should mark enteredAllRaces as true when a racer enters every race even across multiple classes', () => {
+        it('should list all racers who entered every race in allRacesRacers even across multiple classes', () => {
             const raceResultsList = [
                 {
                     abbrev: 'R1',
@@ -421,22 +421,76 @@ describe('series.js unit tests', () => {
             ];
 
             const series = buildSeriesData(raceResultsList);
-            const c1Class = series.classes.find(c => c.className === 'C-1 Men');
-            const k1Class = series.classes.find(c => c.className === 'K-1 Men');
+            expect(series.allRacesRacers).toEqual([
+                'MultiClassRacer',
+                'SingleClassAllRaces'
+            ]);
+        });
 
-            // MultiClassRacer raced R1 in K-1 Men, and R2 & R3 in C-1 Men -> entered all 3 races!
-            const multiInC1 = c1Class.racers.find(r => r.name === 'MultiClassRacer');
-            const multiInK1 = k1Class.racers.find(r => r.name === 'MultiClassRacer');
-            expect(multiInC1.enteredAllRaces).toBe(true);
-            expect(multiInK1.enteredAllRaces).toBe(true);
+        it('should record individual racers A and B from tandem (C-2 and OC-2) "A & B" entries and not record "A & B" as a tandem pair in allRacesRacers', () => {
+            const raceResultsList = [
+                {
+                    abbrev: 'R1',
+                    rows: [
+                        { Class: 'C-2 Mixed', Name: 'Alice & Bob', 'Class Rank': '1' },
+                        { Class: 'OC-2 Men', Name: 'Charlie & Dave', 'Class Rank': '1' }
+                    ]
+                },
+                {
+                    abbrev: 'R2',
+                    rows: [
+                        { Class: 'C-2 Mixed', Name: 'Alice & Bob', 'Class Rank': '2' },
+                        { Class: 'K-1 Men', Name: 'Charlie', 'Class Rank': '1' },
+                        { Class: 'OC-2 Mixed', Name: 'Dave & Eve', 'Class Rank': '1' }
+                    ]
+                }
+            ];
 
-            // SingleClassAllRaces raced R1, R2, R3 in K-1 Men -> entered all 3 races!
-            const singleAll = k1Class.racers.find(r => r.name === 'SingleClassAllRaces');
-            expect(singleAll.enteredAllRaces).toBe(true);
+            const series = buildSeriesData(raceResultsList);
+            // Alice & Bob raced both races together in C-2 Mixed, Charlie raced OC-2 then K-1, Dave raced OC-2 with Charlie then Eve.
+            // Individual racers Alice, Bob, Charlie, and Dave all raced every race; "Alice & Bob" must NOT appear as a pair.
+            expect(series.allRacesRacers).toEqual([
+                'Alice',
+                'Bob',
+                'Charlie',
+                'Dave'
+            ]);
+            expect(series.allRacesRacers).not.toContain('Alice & Bob');
+        });
 
-            // MissedOneRacer only raced R1 and R2 -> did not enter all 3 races
-            const missedOne = k1Class.racers.find(r => r.name === 'MissedOneRacer');
-            expect(missedOne.enteredAllRaces).toBe(false);
+        it('should normalize tandem racer names alphabetically so "A & B" and "B & A" appear on the same line in C-2 and OC-2 classes', () => {
+            const raceResultsList = [
+                {
+                    abbrev: 'R1',
+                    rows: parseRaceTSV([
+                        'Class\tName\tIndiv. Class Rank\tClass Rank',
+                        'C-2 Mixed\tZoe & Aaron\t1\t1',
+                        'OC-2 Men\tCharlie & Bob\t1\t2'
+                    ].join('\n'))
+                },
+                {
+                    abbrev: 'R2',
+                    rows: parseRaceTSV([
+                        'Class\tName\tIndiv. Class Rank\tClass Rank',
+                        'C-2 Mixed\tAaron & Zoe\t1\t2',
+                        'OC-2 Men\tBob & Charlie\t1\t1'
+                    ].join('\n'))
+                }
+            ];
+
+            const series = buildSeriesData(raceResultsList);
+            const c2Class = series.classes.find(c => c.className === 'C-2 Mixed');
+            const oc2Class = series.classes.find(c => c.className === 'OC-2 Men');
+
+            expect(c2Class.racers.length).toBe(1);
+            expect(c2Class.racers[0].name).toBe('Aaron & Zoe');
+            expect(c2Class.racers[0].ranks).toEqual(['1', '2']);
+            expect(c2Class.racers[0].totalPoints).toBe(18);
+
+            expect(oc2Class.racers.length).toBe(1);
+            expect(oc2Class.racers[0].name).toBe('Bob & Charlie');
+            expect(oc2Class.racers[0].ranks).toEqual(['2', '1']);
+            expect(oc2Class.racers[0].totalPoints).toBe(18);
         });
     });
 });
