@@ -53,7 +53,7 @@
     <div class="max-w-5xl mx-auto px-4 py-8">
         <!-- Header -->
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-extrabold text-blue-800 mb-2">Series Results</h1>
+            <h1 class="text-3xl font-extrabold text-blue-800 mb-2">NESS Series Results</h1>
         </header>
 
         <!-- Year Selector Section -->
@@ -248,34 +248,38 @@
             }
 
             emptyState.classList.add('hidden');
-            const { raceNames, classes } = seriesData;
+            const { raceNames, totalRaces, minRacesToQualify, classes } = seriesData;
             const colCount = 1 + (raceNames.length * 2) + 3;
 
             let tableHtml = `
+                <div class="flex items-center gap-6 mb-3 px-1 text-sm text-gray-700">
+                    <span>Total races: <strong>${totalRaces}</strong></span>
+                    <span>Races to qualify: <strong>${minRacesToQualify}</strong></span>
+                </div>
                 <div class="md:hidden text-center mb-1 animate-pulse">
                     <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">← Scroll table for more →</span>
                 </div>
-                <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden relative">
-                    <div class="overflow-x-auto scroll-shadow-container">
+                <div class="bg-white rounded-xl shadow-md border border-gray-100 relative">
+                    <div>
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider">
-                                <tr>
-                                    <th class="px-3 py-2 border-b border-gray-100"></th>
-                                    <th colspan="${raceNames.length}" class="px-3 py-2 border-b border-l border-gray-200 text-center">Places</th>
-                                    <th colspan="${raceNames.length}" class="px-3 py-2 border-b border-l border-gray-200 text-center">Points</th>
-                                    <th colspan="3" class="px-3 py-2 border-b border-l border-gray-200 text-center"></th>
+                            <thead class="sticky top-0 z-10 bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider shadow-sm">
+                                <tr class="bg-gray-50">
+                                    <th class="px-3 py-1.5 bg-gray-50 rounded-tl-xl"></th>
+                                    <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Race Rank</th>
+                                    <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Points</th>
+                                    <th colspan="3" class="px-3 py-1.5 bg-gray-50 border-l-2 border-l-gray-300 rounded-tr-xl"></th>
                                 </tr>
-                                <tr>
-                                    <th class="px-3 py-2 border-b border-gray-100">Name</th>
+                                <tr class="bg-gray-50">
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200">Name</th>
                                     ${raceNames.map((name, idx) => `
-                                        <th class="px-3 py-2 border-b border-gray-100 ${idx === 0 ? 'border-l border-gray-200' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
+                                        <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
                                     `).join('')}
                                     ${raceNames.map((name, idx) => `
-                                        <th class="px-3 py-2 border-b border-gray-100 ${idx === 0 ? 'border-l border-gray-200' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
+                                        <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
                                     `).join('')}
-                                    <th class="px-3 py-2 border-b border-l border-gray-200 text-center whitespace-nowrap">Total</th>
-                                    <th class="px-3 py-2 border-b border-gray-100 text-center whitespace-nowrap">Best of 4</th>
-                                    <th class="px-3 py-2 border-b border-gray-100 text-center whitespace-nowrap">Series Rank</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center whitespace-nowrap">Total</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Best of 4</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Series Rank</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50">
@@ -293,12 +297,12 @@
                         <tr class="hover:bg-blue-50 transition-colors">
                             <td class="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">${escapeHtml(racer.name)}</td>
                             ${racer.ranks.map((rank, idx) => `
-                                <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l border-gray-100' : ''} text-center whitespace-nowrap">${escapeHtml(rank)}</td>
+                                <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(rank)}</td>
                             `).join('')}
                             ${racer.points.map((pt, idx) => `
-                                <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l border-gray-100' : ''} text-center whitespace-nowrap">${escapeHtml(pt)}</td>
+                                <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(pt)}</td>
                             `).join('')}
-                            <td class="px-3 py-2 text-gray-900 font-bold border-l border-gray-100 text-center whitespace-nowrap">${escapeHtml(racer.totalPoints)}</td>
+                            <td class="px-3 py-2 text-gray-900 font-bold border-l-2 border-l-gray-300 text-center whitespace-nowrap">${escapeHtml(racer.totalPoints)}</td>
                             <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.bestOf4Points)}</td>
                             <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.seriesRank)}</td>
                         </tr>

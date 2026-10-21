@@ -152,6 +152,8 @@ describe('series.js unit tests', () => {
 
             const series = buildSeriesData(raceResultsList);
             expect(series.raceNames).toEqual(['PB', 'BW', 'KD', 'FH', 'CB']);
+            expect(series.totalRaces).toBe(5);
+            expect(series.minRacesToQualify).toBe(3);
             expect(series.classes.length).toBe(1);
             expect(series.classes[0].className).toBe('K-1 MEN');
 
@@ -341,6 +343,56 @@ describe('series.js unit tests', () => {
             // Raced2 has only 2 of 4 races (< 3), so Raced3 gets Series Rank 1
             expect(racers4.map(r => r.seriesRank)).toEqual(['', 1]);
         });
+
+        it('should merge Master (40+) for Men/Women and merge all Grand Master variants into "K-1 Grand Masters"', () => {
+            const raceResultsList = [
+                {
+                    abbrev: 'R1',
+                    rows: parseRaceTSV([
+                        'Class\tName\tIndiv. Class Rank\tClass Rank',
+                        'K-1 Master Men (40+)\tJohn Doe\t1\t1',
+                        'K-1 Master Women (40+)\tJane Doe\t1\t2',
+                        'K-1 Grand Master Men (65+)\tBob Smith\t1\t1',
+                        'K-1 Grand Master Women (65+)\tAnn Smith\t1\t2'
+                    ].join('\n'))
+                },
+                {
+                    abbrev: 'R2',
+                    rows: parseRaceTSV([
+                        'Class\tName\tIndiv. Class Rank\tClass Rank',
+                        'K-1 Master Men\tJohn Doe\t1\t2',
+                        'K-1 Master Women\tJane Doe\t1\t1',
+                        'K-1 Grand Masters (65+)\tBob Smith\t1\t3',
+                        'K-1 Grand Master Women\tAnn Smith\t1\t1'
+                    ].join('\n'))
+                }
+            ];
+
+            const series = buildSeriesData(raceResultsList);
+            expect(series.classes.map(c => c.className)).toEqual([
+                'K-1 Grand Masters',
+                'K-1 Master Men',
+                'K-1 Master Women'
+            ]);
+
+            const grandMastersRacers = series.classes[0].racers;
+            expect(grandMastersRacers.map(r => r.name)).toEqual(['Ann Smith', 'Bob Smith']);
+            expect(grandMastersRacers[0].ranks).toEqual(['2', '1']);
+            expect(grandMastersRacers[0].totalPoints).toBe(18);
+            expect(grandMastersRacers[1].ranks).toEqual(['1', '3']);
+            expect(grandMastersRacers[1].totalPoints).toBe(16);
+
+            const menRacer = series.classes[1].racers[0];
+            expect(menRacer.name).toBe('John Doe');
+            expect(menRacer.ranks).toEqual(['1', '2']);
+            expect(menRacer.totalPoints).toBe(18);
+
+            const womenRacer = series.classes[2].racers[0];
+            expect(womenRacer.name).toBe('Jane Doe');
+            expect(womenRacer.ranks).toEqual(['2', '1']);
+            expect(womenRacer.totalPoints).toBe(18);
+        });
     });
 });
+
 

@@ -73,7 +73,23 @@ export function getTsvExportUrl(resultsUrl) {
     return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=tsv&gid=${gid}&t=${new Date().getTime()}`;
 }
 
-// --- 6. Parse Race TSV into Ranked Rows ---
+// --- 6. Normalize Class Name ---
+export function normalizeClassName(cls) {
+    if (!cls) return '';
+    const trimmed = cls.trim();
+    if (/^K-1\s+Master\s+Men\s*\(40\+\)$/i.test(trimmed)) {
+        return 'K-1 Master Men';
+    }
+    if (/^K-1\s+Master\s+Women\s*\(40\+\)$/i.test(trimmed)) {
+        return 'K-1 Master Women';
+    }
+    if (/^K-1\s+Grand\s+Masters?(\s+(Men|Women))?(\s*\(65\+\))?$/i.test(trimmed)) {
+        return 'K-1 Grand Masters';
+    }
+    return trimmed;
+}
+
+// --- 7. Parse Race TSV into Ranked Rows ---
 export function parseRaceTSV(tsvText) {
     const lines = parseTSV(tsvText);
     if (lines.length === 0) return [];
@@ -110,7 +126,7 @@ export function parseRaceTSV(tsvText) {
             if (indivRank !== '1') continue;
         }
 
-        const cls = (row[classIdx] || '').trim();
+        const cls = normalizeClassName(row[classIdx] || '');
         const name = (row[nameIdx] || '').trim();
         const classRank = (row[classRankIdx] || '').trim();
 
@@ -126,7 +142,7 @@ export function parseRaceTSV(tsvText) {
     return results;
 }
 
-// --- 7. Calculate Points from Class Rank ---
+// --- 8. Calculate Points from Class Rank ---
 export function rankToPoints(rank) {
     if (rank === null || rank === undefined || rank === '') return '';
     const num = parseInt(String(rank).trim(), 10);
@@ -143,11 +159,11 @@ export function rankToPoints(rank) {
     return pointsMap[num] ?? 1;
 }
 
-// --- 8. Build Series Standings Table Data ---
+// --- 9. Build Series Standings Table Data ---
 // raceResultsList: Array of { name?: string, abbrev?: string, rows: Array<{ Class, Name, 'Class Rank' }> }
 export function buildSeriesData(raceResultsList) {
     if (!Array.isArray(raceResultsList)) {
-        return { raceNames: [], classes: [] };
+        return { raceNames: [], totalRaces: 0, minRacesToQualify: 0, classes: [] };
     }
 
     const raceNames = raceResultsList.map(r => r.abbrev || r.name || '');
@@ -157,7 +173,7 @@ export function buildSeriesData(raceResultsList) {
     raceResultsList.forEach((race, raceIdx) => {
         const rows = race.rows || [];
         rows.forEach(row => {
-            const cls = (row[COL_CLASS] || '').trim();
+            const cls = normalizeClassName(row[COL_CLASS] || '');
             const name = (row[COL_NAME] || '').trim();
             const rank = (row[COL_CLASS_RANK] || '').toString().trim();
 
@@ -233,6 +249,8 @@ export function buildSeriesData(raceResultsList) {
 
     return {
         raceNames,
+        totalRaces,
+        minRacesToQualify,
         classes
     };
 }
