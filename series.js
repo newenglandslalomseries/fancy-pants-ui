@@ -169,6 +169,15 @@ export function buildSeriesData(raceResultsList) {
     const raceNames = raceResultsList.map(r => r.abbrev || r.name || '');
     // classMap: className -> Map(racerName -> Map(raceIndex -> classRank))
     const classMap = new Map();
+    // racerAllRacesMap: racerName -> Set(raceIndex) across all classes
+    const racerAllRacesMap = new Map();
+
+    const recordRacerInRace = (racerName, raceIdx) => {
+        if (!racerAllRacesMap.has(racerName)) {
+            racerAllRacesMap.set(racerName, new Set());
+        }
+        racerAllRacesMap.get(racerName).add(raceIdx);
+    };
 
     raceResultsList.forEach((race, raceIdx) => {
         const rows = race.rows || [];
@@ -188,6 +197,12 @@ export function buildSeriesData(raceResultsList) {
             }
             if (rank !== '') {
                 racerMap.get(name).set(raceIdx, rank);
+                recordRacerInRace(name, raceIdx);
+                if (name.includes('&')) {
+                    name.split('&').map(p => p.trim()).filter(Boolean).forEach(part => {
+                        recordRacerInRace(part, raceIdx);
+                    });
+                }
             }
         });
     });
@@ -211,6 +226,7 @@ export function buildSeriesData(raceResultsList) {
                 .sort((a, b) => b - a)
                 .slice(0, 4)
                 .reduce((sum, p) => sum + p, 0);
+            const enteredAllRaces = totalRaces > 0 && (racerAllRacesMap.get(racerName)?.size === totalRaces);
 
             return {
                 name: racerName,
@@ -219,6 +235,7 @@ export function buildSeriesData(raceResultsList) {
                 totalPoints,
                 bestOf4Points,
                 racesCount: numericPoints.length,
+                enteredAllRaces,
                 seriesRank: ''
             };
         });

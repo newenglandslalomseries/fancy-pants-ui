@@ -293,9 +293,12 @@
                 `;
 
                 clsGroup.racers.forEach(racer => {
+                    const starHtml = racer.enteredAllRaces
+                        ? '<span class="text-amber-400 ml-1" title="Entered every race">★</span>'
+                        : '';
                     tableHtml += `
                         <tr class="hover:bg-blue-50 transition-colors">
-                            <td class="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">${escapeHtml(racer.name)}</td>
+                            <td class="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">${escapeHtml(racer.name)}${starHtml}</td>
                             ${racer.ranks.map((rank, idx) => `
                                 <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(rank)}</td>
                             `).join('')}

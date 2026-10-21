@@ -392,6 +392,52 @@ describe('series.js unit tests', () => {
             expect(womenRacer.ranks).toEqual(['2', '1']);
             expect(womenRacer.totalPoints).toBe(18);
         });
+
+        it('should mark enteredAllRaces as true when a racer enters every race even across multiple classes', () => {
+            const raceResultsList = [
+                {
+                    abbrev: 'R1',
+                    rows: [
+                        { Class: 'K-1 Men', Name: 'MultiClassRacer', 'Class Rank': '1' },
+                        { Class: 'K-1 Men', Name: 'SingleClassAllRaces', 'Class Rank': '2' },
+                        { Class: 'K-1 Men', Name: 'MissedOneRacer', 'Class Rank': '3' }
+                    ]
+                },
+                {
+                    abbrev: 'R2',
+                    rows: [
+                        { Class: 'C-1 Men', Name: 'MultiClassRacer', 'Class Rank': '2' },
+                        { Class: 'K-1 Men', Name: 'SingleClassAllRaces', 'Class Rank': '1' },
+                        { Class: 'K-1 Men', Name: 'MissedOneRacer', 'Class Rank': '2' }
+                    ]
+                },
+                {
+                    abbrev: 'R3',
+                    rows: [
+                        { Class: 'C-1 Men', Name: 'MultiClassRacer', 'Class Rank': '1' },
+                        { Class: 'K-1 Men', Name: 'SingleClassAllRaces', 'Class Rank': '1' }
+                    ]
+                }
+            ];
+
+            const series = buildSeriesData(raceResultsList);
+            const c1Class = series.classes.find(c => c.className === 'C-1 Men');
+            const k1Class = series.classes.find(c => c.className === 'K-1 Men');
+
+            // MultiClassRacer raced R1 in K-1 Men, and R2 & R3 in C-1 Men -> entered all 3 races!
+            const multiInC1 = c1Class.racers.find(r => r.name === 'MultiClassRacer');
+            const multiInK1 = k1Class.racers.find(r => r.name === 'MultiClassRacer');
+            expect(multiInC1.enteredAllRaces).toBe(true);
+            expect(multiInK1.enteredAllRaces).toBe(true);
+
+            // SingleClassAllRaces raced R1, R2, R3 in K-1 Men -> entered all 3 races!
+            const singleAll = k1Class.racers.find(r => r.name === 'SingleClassAllRaces');
+            expect(singleAll.enteredAllRaces).toBe(true);
+
+            // MissedOneRacer only raced R1 and R2 -> did not enter all 3 races
+            const missedOne = k1Class.racers.find(r => r.name === 'MissedOneRacer');
+            expect(missedOne.enteredAllRaces).toBe(false);
+        });
     });
 });
 
