@@ -215,7 +215,7 @@
                 );
 
                 const seriesData = buildSeriesData(raceResultsList);
-                renderSeriesTable(seriesData);
+                renderSeriesTable(seriesData, yearRaces);
             } catch (error) {
                 console.error(error);
                 statusMessage.textContent = error.message;
@@ -237,7 +237,7 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function renderSeriesTable(seriesData) {
+        function renderSeriesTable(seriesData, yearRaces = []) {
             const container = document.getElementById('resultsContainer');
             const emptyState = document.getElementById('emptyState');
 
@@ -284,20 +284,24 @@
                                 <tr class="bg-gray-50">
                                     <th class="px-3 py-1.5 bg-gray-50 rounded-tl-xl"></th>
                                     <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Race Rank</th>
-                                    <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Points</th>
-                                    <th colspan="3" class="px-3 py-1.5 bg-gray-50 border-l-2 border-l-gray-300 rounded-tr-xl"></th>
+                                    <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Series Points</th>
+                                    <th colspan="3" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Series Results</th>
                                 </tr>
                                 <tr class="bg-gray-50">
                                     <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200">Name</th>
-                                    ${raceNames.map((name, idx) => `
-                                        <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
-                                    `).join('')}
+                                    ${raceNames.map((name, idx) => {
+                                        const url = yearRaces[idx] && yearRaces[idx].results_url;
+                                        const content = url
+                                            ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${escapeHtml(name)}</a>`
+                                            : escapeHtml(name);
+                                        return `<th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${content}</th>`;
+                                    }).join('')}
                                     ${raceNames.map((name, idx) => `
                                         <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
                                     `).join('')}
                                     <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center whitespace-nowrap">Total</th>
-                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Best of 4</th>
-                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Series Rank</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Best Four</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Rank</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50">
