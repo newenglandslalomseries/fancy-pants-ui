@@ -128,10 +128,11 @@
             await loadRaces();
         }
 
-        async function loadRaces() {
+        async function loadRaces(preserveSelectedYear = false) {
             const yearSelect = document.getElementById('yearSelect');
+            const previousYear = yearSelect.value;
             try {
-                const response = await fetch('races.json');
+                const response = await fetch(`races.json?t=${new Date().getTime()}`, { cache: 'no-store' });
                 if (!response.ok) throw new Error('File not found');
                 const data = await response.json();
                 allRaces = data.races || [];
@@ -150,9 +151,12 @@
             });
 
             if (years.length > 0) {
-                yearSelect.value = years[0]; // Default to most recent year
+                yearSelect.value = (preserveSelectedYear && years.includes(previousYear))
+                    ? previousYear
+                    : years[0]; // Default to most recent year
                 await handleYearChange();
             } else {
+                document.getElementById('resultsContainer').innerHTML = '';
                 document.getElementById('emptyState').classList.remove('hidden');
             }
         }
@@ -167,7 +171,7 @@
             btn.disabled = true;
             icon.classList.add('refresh-spin');
 
-            await loadYearData();
+            await loadRaces(true);
 
             icon.classList.remove('refresh-spin');
             btn.disabled = false;
@@ -300,7 +304,7 @@
                                         <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(name)}</th>
                                     `).join('')}
                                     <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center whitespace-nowrap">Total</th>
-                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Best Four</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Top ${minRacesToQualify}</th>
                                     <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200 text-center whitespace-nowrap">Rank</th>
                                 </tr>
                             </thead>
@@ -325,7 +329,7 @@
                                 <td class="px-3 py-2 text-gray-700 font-medium ${idx === 0 ? 'border-l-2 border-l-gray-300' : ''} text-center whitespace-nowrap">${escapeHtml(pt)}</td>
                             `).join('')}
                             <td class="px-3 py-2 text-gray-900 font-bold border-l-2 border-l-gray-300 text-center whitespace-nowrap">${escapeHtml(racer.totalPoints)}</td>
-                            <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.bestOf4Points)}</td>
+                            <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.topNPoints)}</td>
                             <td class="px-3 py-2 text-gray-900 font-bold text-center whitespace-nowrap">${escapeHtml(racer.seriesRank)}</td>
                         </tr>
                     `;

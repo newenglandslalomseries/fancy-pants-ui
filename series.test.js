@@ -157,7 +157,7 @@ describe('series.js unit tests', () => {
             expect(series.classes.length).toBe(1);
             expect(series.classes[0].className).toBe('K-1 MEN');
 
-            // Sorted by Best of 4 Points descending: Corbett (26), Austin (19), Gordon (18)
+            // Sorted by Top N Points descending: Corbett (26), Austin (19), Gordon (18)
             expect(series.classes[0].racers.map(r => r.name)).toEqual([
                 'Corbett Leith',
                 'Austin Huck',
@@ -169,25 +169,26 @@ describe('series.js unit tests', () => {
             expect(corbett.ranks).toEqual(['', '3', '1', '', '1']);
             expect(corbett.points).toEqual(['', 6, 10, '', 10]);
             expect(corbett.totalPoints).toBe(26);
-            expect(corbett.bestOf4Points).toBe(26);
+            expect(corbett.topNPoints).toBe(26);
             expect(corbett.seriesRank).toBe(1);
 
             expect(austin.ranks).toEqual(['', '4', '2', '', '3']);
             expect(austin.points).toEqual(['', 5, 8, '', 6]);
             expect(austin.totalPoints).toBe(19);
-            expect(austin.bestOf4Points).toBe(19);
+            expect(austin.topNPoints).toBe(19);
             expect(austin.seriesRank).toBe(2);
 
             expect(gordon.ranks).toEqual(['', '2', '3', '', '5']);
             expect(gordon.points).toEqual(['', 8, 6, '', 4]);
             expect(gordon.totalPoints).toBe(18);
-            expect(gordon.bestOf4Points).toBe(18);
+            expect(gordon.topNPoints).toBe(18);
             expect(gordon.seriesRank).toBe(3);
         });
 
-        it('should sum only the highest 4 race points for bestOf4Points and sort racers by bestOf4Points rather than totalPoints', () => {
-            // Alice races 4 times: 1st (10), 1st (10), 2nd (8), 3rd (6) -> Total = 34, Best of 4 = 34
-            // Bob races 6 times: 2nd (8), 2nd (8), 2nd (8), 2nd (8), 3rd (6), 3rd (6) -> Total = 44, Best of 4 = 32
+        it('should sum only the highest N (minRacesToQualify) race points for topNPoints and sort racers by topNPoints rather than totalPoints', () => {
+            // 6 races -> minRacesToQualify = floor(6/2) + 1 = 4
+            // Alice races 4 times: 1st (10), 1st (10), 2nd (8), 3rd (6) -> Total = 34, Top 4 = 34
+            // Bob races 6 times: 2nd (8), 2nd (8), 2nd (8), 2nd (8), 3rd (6), 3rd (6) -> Total = 44, Top 4 = 32
             const raceResultsList = [
                 {
                     abbrev: 'R1',
@@ -234,19 +235,29 @@ describe('series.js unit tests', () => {
             const series = buildSeriesData(raceResultsList);
             const racers = series.classes[0].racers;
 
-            // Alice should be sorted first because her Best of 4 (34) > Bob's Best of 4 (32), even though Bob's Total (44) > Alice's Total (34)
+            // Alice should be sorted first because her Top 4 (34) > Bob's Top 4 (32), even though Bob's Total (44) > Alice's Total (34)
             expect(racers.map(r => r.name)).toEqual(['Alice', 'Bob']);
 
             const [alice, bob] = racers;
             expect(alice.points).toEqual([10, 10, 8, 6, '', '']);
             expect(alice.totalPoints).toBe(34);
-            expect(alice.bestOf4Points).toBe(34);
+            expect(alice.topNPoints).toBe(34);
             expect(alice.seriesRank).toBe(1);
 
             expect(bob.points).toEqual([8, 8, 8, 8, 6, 6]);
             expect(bob.totalPoints).toBe(44);
-            expect(bob.bestOf4Points).toBe(32);
+            expect(bob.topNPoints).toBe(32);
             expect(bob.seriesRank).toBe(2);
+
+            // For 5 races -> minRacesToQualify = floor(5/2) + 1 = 3:
+            // Alice's Top 3 = 10 + 10 + 8 = 28; Bob's Top 3 = 8 + 8 + 8 = 24
+            const series5 = buildSeriesData(raceResultsList.slice(0, 5));
+            const [alice5, bob5] = series5.classes[0].racers;
+            expect(series5.minRacesToQualify).toBe(3);
+            expect(alice5.totalPoints).toBe(34);
+            expect(alice5.topNPoints).toBe(28);
+            expect(bob5.totalPoints).toBe(38);
+            expect(bob5.topNPoints).toBe(24);
         });
 
         it('should skip racers who did not race at least half plus one (rounded down) for odd number of races (5 races -> min 3)', () => {

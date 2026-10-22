@@ -242,9 +242,9 @@ export function buildSeriesData(raceResultsList) {
             const points = ranks.map(r => rankToPoints(r));
             const numericPoints = points.filter(p => typeof p === 'number' && !isNaN(p));
             const totalPoints = numericPoints.reduce((sum, p) => sum + p, 0);
-            const bestOf4Points = [...numericPoints]
+            const topNPoints = [...numericPoints]
                 .sort((a, b) => b - a)
-                .slice(0, 4)
+                .slice(0, minRacesToQualify)
                 .reduce((sum, p) => sum + p, 0);
 
             return {
@@ -252,15 +252,15 @@ export function buildSeriesData(raceResultsList) {
                 ranks,
                 points,
                 totalPoints,
-                bestOf4Points,
+                topNPoints,
                 racesCount: numericPoints.length,
                 seriesRank: ''
             };
         });
 
         racers.sort((a, b) => {
-            if (b.bestOf4Points !== a.bestOf4Points) {
-                return b.bestOf4Points - a.bestOf4Points;
+            if (b.topNPoints !== a.topNPoints) {
+                return b.topNPoints - a.topNPoints;
             }
             if (b.totalPoints !== a.totalPoints) {
                 return b.totalPoints - a.totalPoints;
