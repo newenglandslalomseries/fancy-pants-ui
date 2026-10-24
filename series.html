@@ -140,7 +140,7 @@
                 allRaces = FALLBACK_RACES.races;
             }
 
-            const years = getUniqueYears(allRaces);
+            const years = getUniqueYears(allRaces).filter(year => Number(year) >= 2026);
             yearSelect.innerHTML = '';
 
             years.forEach(year => {
@@ -156,6 +156,10 @@
                     : years[0]; // Default to most recent year
                 await handleYearChange();
             } else {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No years available';
+                yearSelect.appendChild(option);
                 document.getElementById('resultsContainer').innerHTML = '';
                 document.getElementById('emptyState').classList.remove('hidden');
             }
