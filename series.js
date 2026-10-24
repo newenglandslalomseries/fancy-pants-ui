@@ -262,8 +262,12 @@ export function buildSeriesData(raceResultsList) {
             if (b.topNPoints !== a.topNPoints) {
                 return b.topNPoints - a.topNPoints;
             }
-            if (b.totalPoints !== a.totalPoints) {
-                return b.totalPoints - a.totalPoints;
+            for (let i = totalRaces - 1; i >= 0; i--) {
+                const ptA = typeof a.points[i] === 'number' ? a.points[i] : 0;
+                const ptB = typeof b.points[i] === 'number' ? b.points[i] : 0;
+                if (ptB !== ptA) {
+                    return ptB - ptA;
+                }
             }
             return a.name.localeCompare(b.name);
         });

@@ -503,6 +503,46 @@ describe('series.js unit tests', () => {
             expect(oc2Class.racers[0].ranks).toEqual(['2', '1']);
             expect(oc2Class.racers[0].totalPoints).toBe(18);
         });
+
+        it('should break ties in topNPoints by points in the last race of the year, then earlier races in reverse date order', () => {
+            // 3 races chronologically (R1, R2, R3) -> minRacesToQualify = 2 (Top 2)
+            // All three racers tie with topNPoints = 18:
+            // - Zack: R1 = DNS, R2 = 2nd (8), R3 = 1st (10) -> Top 2 = 18, Total = 18 (wins on R3: 10 > 6)
+            // - Bob:  R1 = 2nd (8), R2 = 1st (10), R3 = 3rd (6) -> Top 2 = 18, Total = 24 (ties Aaron on R3: 6 == 6, wins on R2: 10 > 8)
+            // - Aaron: R1 = 1st (10), R2 = 2nd (8), R3 = 3rd (6) -> Top 2 = 18, Total = 24
+            const raceResultsList = [
+                {
+                    abbrev: 'R1',
+                    rows: [
+                        { Class: 'K-1 Men', Name: 'Aaron', 'Class Rank': '1' },
+                        { Class: 'K-1 Men', Name: 'Bob', 'Class Rank': '2' }
+                    ]
+                },
+                {
+                    abbrev: 'R2',
+                    rows: [
+                        { Class: 'K-1 Men', Name: 'Bob', 'Class Rank': '1' },
+                        { Class: 'K-1 Men', Name: 'Aaron', 'Class Rank': '2' },
+                        { Class: 'K-1 Men', Name: 'Zack', 'Class Rank': '2' }
+                    ]
+                },
+                {
+                    abbrev: 'R3',
+                    rows: [
+                        { Class: 'K-1 Men', Name: 'Zack', 'Class Rank': '1' },
+                        { Class: 'K-1 Men', Name: 'Aaron', 'Class Rank': '3' },
+                        { Class: 'K-1 Men', Name: 'Bob', 'Class Rank': '3' }
+                    ]
+                }
+            ];
+
+            const series = buildSeriesData(raceResultsList);
+            const racers = series.classes[0].racers;
+
+            expect(racers.map(r => r.topNPoints)).toEqual([18, 18, 18]);
+            expect(racers.map(r => r.name)).toEqual(['Zack', 'Bob', 'Aaron']);
+            expect(racers.map(r => r.seriesRank)).toEqual([1, 2, 3]);
+        });
     });
 });
 

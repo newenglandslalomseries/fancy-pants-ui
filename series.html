@@ -275,8 +275,19 @@
                     </div>
                 </details>
                 <div class="flex items-center gap-6 mb-3 px-1 text-sm text-gray-700">
-                    <span>Total races: <strong>${totalRaces}</strong></span>
-                    <span>Races to qualify: <strong>${minRacesToQualify}</strong></span>
+                  <p>Rules: Series ranks are per class. Racers must
+		    finish in more than half of the races to qualify
+		    (# to qualify Q = N/2+1 rounded down). Series
+		    points are awarded based on place: 10 for 1st, 8
+		    for 2nd, 6 for 3rd, 5 for 4th, 4 for 5th, 3 for
+		    6th, 2 for 7th, and 1 for entering. Series rank is
+		    determined by the sum of each racer's best Q
+		    points. Ties are broken by points in the last race
+		    of the season.</p>
+		</div>
+                <div class="flex items-center gap-6 mb-3 px-1 text-sm text-gray-700">
+                    <span>Total races: <strong>N = ${totalRaces}</strong></span>
+                    <span>Races to qualify: <strong>Q = ${minRacesToQualify}</strong></span>
                 </div>
                 <div class="md:hidden text-center mb-1 animate-pulse">
                     <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">← Scroll table for more →</span>
@@ -287,12 +298,12 @@
                             <thead class="sticky top-0 z-10 bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-wider shadow-sm">
                                 <tr class="bg-gray-50">
                                     <th class="px-3 py-1.5 bg-gray-50 rounded-tl-xl"></th>
-                                    <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Race Rank</th>
+                                    <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Race Place</th>
                                     <th colspan="${raceNames.length}" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Series Points</th>
                                     <th colspan="3" class="px-3 py-1.5 bg-gray-50 border-b border-b-gray-200 border-l-2 border-l-gray-300 text-center">Series Results</th>
                                 </tr>
                                 <tr class="bg-gray-50">
-                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200">Name</th>
+                                    <th class="px-3 py-2 bg-gray-50 border-b border-b-gray-200">Class and Name</th>
                                     ${raceNames.map((name, idx) => {
                                         const url = yearRaces[idx] && yearRaces[idx].results_url;
                                         const content = url
